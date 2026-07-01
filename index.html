@@ -328,11 +328,11 @@
             startDate: "113/06/12", endDate: "116/11/07"
         };
 
+        // 時程框架重塑：調整為 114/06 - 116/12 (共計 31 個月)
         const planStructure = [
-            { year: 113, months: [6, 7, 8, 9, 10, 11, 12] },
-            { year: 114, months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
+            { year: 114, months: [6, 7, 8, 9, 10, 11, 12] },
             { year: 115, months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
-            { year: 116, months: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+            { year: 116, months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] }
         ];
         
         let monthLabels = [];
@@ -452,10 +452,14 @@
             }
         };
 
-        // 初始化基本 S-Curve 結構
+        // 初始化基本 S-Curve 結構 (配合 31 個月優雅呈現)
         function generateBaseData() {
-            let totalMonths = 40; 
+            let totalMonths = 31; 
             let count = 0;
+            monthLabels = [];
+            plannedProgress = [];
+            baseActualProgress = [];
+            
             planStructure.forEach(y => {
                 y.months.forEach(m => {
                     monthLabels.push(`${y.year}/${m}`);
@@ -467,6 +471,7 @@
                 });
             });
 
+            // 設定預置的 115/6 的真實對比參照
             const initIdx = monthLabels.indexOf('115/6');
             if (initIdx !== -1) {
                 plannedProgress[initIdx] = 29.19;
@@ -519,8 +524,12 @@
                                     }
                                 }
                             }
-                            if (data.plannedProgress) plannedProgress = data.plannedProgress;
-                            if (data.baseActualProgress) baseActualProgress = data.baseActualProgress;
+                            if (data.plannedProgress && data.plannedProgress.length === 31) {
+                                plannedProgress = data.plannedProgress;
+                            }
+                            if (data.baseActualProgress && data.baseActualProgress.length === 31) {
+                                baseActualProgress = data.baseActualProgress;
+                            }
                             if (data.dailyOverrides) dailyOverrides = data.dailyOverrides;
 
                             updateProjectInfoUI();
@@ -584,7 +593,15 @@
                 if (idx === targetMonthIdx) return aVal; 
                 return null; 
             });
-            if (charts.progress) charts.progress.setOption({ series: [{ name: '實際', data: displayActualProgress }] });
+            if (charts.progress) {
+                charts.progress.setOption({ 
+                    xAxis: { data: monthLabels },
+                    series: [
+                        { name: '預定進度', data: plannedProgress },
+                        { name: '實際進度', data: displayActualProgress }
+                    ] 
+                });
+            }
 
             // 生成五日統計數據
             const xAxisData = [], laborData = [], equipData = [];
@@ -716,7 +733,7 @@
             const body = document.getElementById('modal-body');
             
             if (type === 'plan') {
-                document.getElementById('modal-title').innerText = '設定預定進度總表 (113年6月 - 116年9月)';
+                document.getElementById('modal-title').innerText = '設定預定進度總表 (114年6月 - 116年12月)';
                 let htmlContent = '<div class="space-y-4">';
                 let dataIndex = 0; 
                 planStructure.forEach(y => {
@@ -729,7 +746,7 @@
                         htmlContent += `
                             <div>
                                 <label class="block text-[11px] font-bold text-slate-500 mb-1">${m}月份 (%)</label>
-                                <input type="number" step="0.01" class="w-full plan-input border border-slate-200 rounded-lg p-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono" value="${plannedProgress[dataIndex]}" data-index="${dataIndex}" onfocus="this.select(); this.onmouseup = function() { this.onmouseup = null; return false; }">
+                                <input type="number" step="0.01" class="w-full plan-input border border-slate-200 rounded-lg p-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono" value="${plannedProgress[dataIndex] || 0}" data-index="${dataIndex}" onfocus="this.select(); this.onmouseup = function() { this.onmouseup = null; return false; }">
                             </div>
                         `;
                         dataIndex++;
