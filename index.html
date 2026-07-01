@@ -1,21 +1,590 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>財團法人中華經濟研究院興建院舍大樓統包工程 - 戰情中心 (雲端同步版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .chart-container { width: 100%; height: 300px; }
+    </style>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 min-h-screen">
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyD8djSLroOTp4EoASydCAHLk5ULfqC4UtU",
-  authDomain: "cier-dashboard.firebaseapp.com",
-  projectId: "cier-dashboard",
-  storageBucket: "cier-dashboard.firebasestorage.app",
-  messagingSenderId: "1019690428335",
-  appId: "1:1019690428335:web:a17011f256443acf21b15a",
-  measurementId: "G-JG9BQE86P6"
-};
+    <!-- 頂部導覽列 -->
+    <nav class="bg-indigo-900 text-white shadow-lg p-4 flex justify-between items-center sticky top-0 z-40">
+        <div>
+            <h1 class="text-xl md:text-2xl font-bold tracking-wider flex items-center gap-2">
+                財團法人中華經濟研究院興建院舍大樓統包工程
+                <span id="cloud-status" class="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded-full border border-emerald-500/50 ml-2 hidden">☁️ 雲端已連線</span>
+            </h1>
+            <p class="text-indigo-200 text-sm mt-1">智慧戰情儀表板 (工址：臺北市北投區)</p>
+        </div>
+        <div class="flex items-center gap-3 md:gap-4">
+            <!-- 歷史日期選擇器 -->
+            <div class="bg-white/10 rounded-lg p-1.5 flex items-center gap-2 border border-white/20">
+                <span class="text-xs text-indigo-200 hidden sm:block whitespace-nowrap">各日填報情形</span>
+                <input type="date" id="history-date" onchange="window.changeDate(this.value)" value="2026-06-29" class="bg-indigo-800 text-white text-sm rounded px-2 py-1 outline-none border border-indigo-600 focus:border-indigo-400 cursor-pointer">
+            </div>
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+            <button onclick="window.openModal('daily_report')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 md:px-4 rounded-lg font-bold shadow-lg transition text-sm flex items-center gap-2">
+                <svg class="w-4 h-4 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                <span class="whitespace-nowrap">填報</span>
+            </button>
+            <button onclick="window.openModal('plan')" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-2 md:px-4 rounded-lg font-bold shadow-lg transition text-sm">
+                <span class="whitespace-nowrap">預定進度</span>
+            </button>
+            <div class="text-right hidden lg:block ml-2">
+                <p class="text-xs text-indigo-300">最後更新時間</p>
+                <p id="last-update" class="font-mono text-lg text-green-400">--:--:--</p>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要內容區 -->
+    <main class="p-4 md:p-6 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 工程基本資訊 (頂部板塊) -->
+        <div class="bg-white rounded-xl shadow-md p-5 lg:col-span-12 border-t-4 border-slate-700 relative group">
+            <!-- 編輯按鈕 -->
+            <button onclick="window.openModal('project_info')" class="absolute top-4 right-4 p-2 bg-slate-100 rounded-full text-slate-500 shadow hover:bg-indigo-100 hover:text-indigo-600 transition opacity-100 md:opacity-0 md:group-hover:opacity-100" title="編輯工程資訊">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+            </button>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 border-b pb-4 pr-10">
+                <div class="flex items-center gap-3">
+                    <div class="bg-slate-100 p-2 rounded-lg"><svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg></div>
+                    <div><p class="text-xs text-gray-500">承造人</p><p class="font-bold">永青營造工程股份有限公司</p></div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="bg-slate-100 p-2 rounded-lg"><svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></div>
+                    <div><p class="text-xs text-gray-500">建(雜)照號碼</p><p class="font-bold">114建字第0052號</p></div>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
+                <div class="bg-slate-50 p-3 rounded-lg text-center"><p class="text-xs text-gray-500">核定工期</p><p class="font-bold text-lg"><span id="info-approved">1197</span> <span class="text-xs">天</span></p></div>
+                <div class="bg-blue-50 p-3 rounded-lg text-center"><p class="text-xs text-blue-600">使用工期</p><p class="font-bold text-lg text-blue-700"><span id="info-used">715</span> <span class="text-xs">天</span></p></div>
+                <div class="bg-green-50 p-3 rounded-lg text-center"><p class="text-xs text-green-600">剩餘工期</p><p class="font-bold text-lg text-green-700"><span id="info-remaining">482</span> <span class="text-xs">天</span></p></div>
+                <div class="bg-slate-50 p-3 rounded-lg text-center"><p class="text-xs text-gray-500">工期展延</p><p class="font-bold text-lg"><span id="info-extension">0</span> <span id="info-ext-note" class="text-xs">(免計5天)</span></p></div>
+                <div class="pl-2 border-l flex flex-col justify-center"><p class="text-xs text-gray-500">開工日期</p><p class="font-bold text-sm" id="info-start-date">113/06/12</p></div>
+                <div class="pl-2 border-l flex flex-col justify-center"><p class="text-xs text-gray-500">預定完工日</p><p class="font-bold text-sm" id="info-end-date">116/11/07</p></div>
+            </div>
+        </div>
+
+        <!-- 左側圖表區 -->
+        <div class="lg:col-span-8 space-y-6">
+            <!-- 進度 -->
+            <div class="bg-white rounded-xl shadow-md p-4 border-t-4 border-indigo-500">
+                <div id="progress-chart" class="chart-container"></div>
+            </div>
+
+            <!-- 底部小圖表 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div id="labor-chart" class="bg-white rounded-xl shadow-md p-4 border-t-4 border-emerald-500 h-[250px]"></div>
+                <div id="equipment-chart" class="bg-white rounded-xl shadow-md p-4 border-t-4 border-amber-500 h-[250px]"></div>
+                <div id="construction-chart" class="bg-white rounded-xl shadow-md p-4 border-t-4 border-rose-500 h-[250px]"></div>
+            </div>
+        </div>
+
+        <!-- 右側：每日出工報告 (現場動態) -->
+        <div class="lg:col-span-4 space-y-6">
+            <div class="bg-white rounded-xl shadow-md border-t-4 border-blue-500 relative overflow-hidden">
+                <div class="bg-blue-50 p-4 border-b flex justify-between items-center">
+                    <div>
+                        <h2 class="font-bold text-gray-800 text-lg">本日現場動態</h2>
+                        <p id="panel-date-display" class="text-xs text-gray-500">115年6月29日 (星期一)</p>
+                    </div>
+                    <button onclick="window.openModal('daily_report')" class="p-2 bg-white rounded-full text-blue-600 shadow hover:bg-blue-100 transition z-10" title="編輯報告">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                    </button>
+                </div>
+                
+                <div class="p-5 space-y-5 text-sm">
+                    <!-- 進度與天氣 -->
+                    <div class="flex justify-between bg-slate-50 p-3 rounded-lg">
+                        <div>
+                            <p class="text-gray-500 mb-1">天氣狀況</p>
+                            <p id="panel-weather" class="font-bold text-orange-500 text-base" data-raw="晴 / 晴">☀️ 晴 / 晴</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-gray-500 mb-1">出工進度</p>
+                            <p class="font-bold text-indigo-700" id="panel-planned-progress">預定 29.19%</p>
+                            <p class="font-bold text-emerald-600" id="panel-actual-progress">實際 10.00%</p>
+                        </div>
+                    </div>
+
+                    <!-- 人力 -->
+                    <div>
+                        <h3 id="panel-labor-title" class="text-emerald-700 font-bold border-b border-emerald-200 pb-1 mb-2 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                            本日現場施作人力 (16人)
+                        </h3>
+                        <ul id="panel-labor-list" class="list-disc list-inside text-gray-700 space-y-1 ml-1">
+                            <li>工務所：9人</li>
+                            <li>土方（禾逸）：5人</li>
+                            <li>機電（協磁）：1人</li>
+                            <li>點工（旭升）：1人</li>
+                        </ul>
+                    </div>
+
+                    <!-- 機具 -->
+                    <div>
+                        <h3 class="text-amber-600 font-bold border-b border-amber-200 pb-1 mb-2 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            機具狀況
+                        </h3>
+                        <p id="panel-equip-desc" class="text-gray-700 ml-1">（禾逸）PC120挖土機 3台</p>
+                    </div>
+
+                    <!-- 施工作業項目 -->
+                    <div>
+                        <h3 class="text-rose-600 font-bold border-b border-rose-200 pb-1 mb-2 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                            今日施工作業項目
+                        </h3>
+                        <ol id="panel-const-list" class="list-decimal list-inside text-gray-700 space-y-1 ml-1">
+                            <li>F~I/1~7 line 第二層土方整地與接地線。</li>
+                            <li>旭升協助丈量高程。</li>
+                            <li>基地積水抽水。</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal 填報資料 -->
+    <div id="data-modal" class="fixed inset-0 bg-slate-900/60 hidden z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl transform transition-transform scale-100">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modal-title" class="text-lg font-bold text-slate-800">填報資料</h3>
+                <button onclick="window.closeModal()" class="text-gray-400 hover:text-red-500 transition p-1 rounded-md hover:bg-red-50" title="關閉視窗">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="modal-body" class="space-y-4"></div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="window.closeModal()" class="flex-1 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition">取消</button>
+                <button onclick="window.submitForm()" class="flex-1 py-2 bg-indigo-900 text-white rounded-lg hover:bg-indigo-800 shadow-md transition">儲存提交</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 高科技 Toast 提醒 -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-emerald-500 text-white px-6 py-4 rounded-xl shadow-2xl transform transition-all duration-300 opacity-0 translate-y-10 pointer-events-none z-50 flex items-center gap-3">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <span id="toast-text" class="font-bold tracking-wide">資料已同步成功！</span>
+    </div>
+
+    <!-- 導入 Firebase 模組化邏輯 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 專屬 Firebase 設定檔 (已更新為您的個人資料庫金鑰)
+        const firebaseConfig = {
+            apiKey: "AIzaSyD8djSLroOTp4EoASydCAHLk5ULfqC4UtU",
+            authDomain: "cier-dashboard.firebaseapp.com",
+            projectId: "cier-dashboard",
+            storageBucket: "cier-dashboard.firebasestorage.app",
+            messagingSenderId: "1019690428335",
+            appId: "1:1019690428335:web:a17011f256443acf21b15a",
+            measurementId: "G-JG9BQE86P6"
+        };
+        const appId = "cier-dashboard-project";
+        
+        let app, auth, db, docRef, currentUser = null;
+
+        // 全域資料狀態
+        let currentChartType = '';
+        let charts = {};
+        let currentSelectedDate = '2026-06-29'; 
+        let dailyOverrides = {}; 
+        
+        let projectInfo = {
+            approved: 1197, used: 715, remaining: 482,
+            extension: "0", extensionNote: "免計5天",
+            startDate: "113/06/12", endDate: "116/11/07"
+        };
+
+        const planStructure = [
+            { year: 113, months: [6, 7, 8, 9, 10, 11, 12] },
+            { year: 114, months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
+            { year: 115, months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
+            { year: 116, months: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+        ];
+        
+        let monthLabels = [];
+        let plannedProgress = [];
+        let baseActualProgress = []; 
+        let displayActualProgress = []; 
+        let targetMonthIdx = 0;
+        
+        // --- 初始化基礎資料 ---
+        function generateBaseData() {
+            let totalMonths = 40; 
+            let count = 0;
+            planStructure.forEach(y => {
+                y.months.forEach(m => {
+                    monthLabels.push(`${y.year}/${m}`);
+                    let x = (count / totalMonths) * 10 - 5;
+                    let val = 100 / (1 + Math.exp(-x));
+                    plannedProgress.push(parseFloat(val.toFixed(2)));
+                    baseActualProgress.push(parseFloat((val * 0.95).toFixed(2)));
+                    count++;
+                });
+            });
+
+            const initIdx = monthLabels.indexOf('115/6');
+            if (initIdx !== -1) {
+                plannedProgress[initIdx] = 29.19;
+                baseActualProgress[initIdx] = 10.00;
+            }
+        }
+
+        // --- Firebase 雲端初始化與連線 ---
+        async function initFirebase() {
+            try {
+                if(Object.keys(firebaseConfig).length === 0) return; 
+
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Auth 認證登入 (由於換成了您的資料庫，我們優先使用匿名登入機制)
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token).catch(() => signInAnonymously(auth));
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                // 監聽 Auth 狀態
+                onAuthStateChanged(auth, (user) => {
+                    currentUser = user;
+                    if (user) {
+                        document.getElementById('cloud-status').classList.remove('hidden');
+                        
+                        // 設定雲端讀取路徑 (公用資料區)
+                        docRef = doc(db, 'artifacts', appId, 'public', 'data', 'dashboard', 'main_state');
+                        
+                        // 建立即時監聽
+                        onSnapshot(docRef, (snapshot) => {
+                            if (snapshot.exists()) {
+                                const data = snapshot.data();
+                                if (data.projectInfo) projectInfo = data.projectInfo;
+                                if (data.plannedProgress) plannedProgress = data.plannedProgress;
+                                if (data.baseActualProgress) baseActualProgress = data.baseActualProgress;
+                                if (data.dailyOverrides) dailyOverrides = data.dailyOverrides;
+
+                                // 將雲端資料更新到畫面
+                                updateProjectInfoUI();
+                                window.changeDate(currentSelectedDate, true); 
+                            }
+                        }, (error) => {
+                            console.error("Firebase 連線錯誤:", error);
+                        });
+                    }
+                });
+            } catch (error) {
+                console.error("Firebase 初始化失敗:", error);
+            }
+        }
+
+        // --- 畫面渲染與更新邏輯 ---
+        function updateProjectInfoUI() {
+            document.getElementById('info-approved').innerText = projectInfo.approved;
+            document.getElementById('info-used').innerText = projectInfo.used;
+            document.getElementById('info-remaining').innerText = projectInfo.remaining;
+            document.getElementById('info-extension').innerText = projectInfo.extension;
+            document.getElementById('info-ext-note').innerText = projectInfo.extensionNote ? `(${projectInfo.extensionNote})` : '';
+            document.getElementById('info-start-date').innerText = projectInfo.startDate;
+            document.getElementById('info-end-date').innerText = projectInfo.endDate;
+        }
+
+        function updateTime() {
+            document.getElementById('last-update').innerText = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+        }
+
+        // 將重要函式綁定到 window 以供 HTML inline 使用
+        window.changeDate = function(dateStr, isFromCloudSync = false) {
+            currentSelectedDate = dateStr;
+            const dateObj = new Date(dateStr);
+            const rocY = dateObj.getFullYear() - 1911;
+            const m = dateObj.getMonth() + 1;
+            const d = dateObj.getDate();
+            const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+            const dow = days[dateObj.getDay()];
+
+            document.getElementById('panel-date-display').innerText = `${rocY}年${m}月${d}日 (${dow})`;
+            const seed = rocY * 1000 + m * 100 + d; 
+
+            targetMonthIdx = monthLabels.indexOf(`${rocY}/${m}`);
+            
+            let pVal = 0, aVal = 0;
+            if (targetMonthIdx !== -1) {
+                pVal = plannedProgress[targetMonthIdx] || 0;
+                aVal = baseActualProgress[targetMonthIdx] || 0; 
+            }
+            
+            document.getElementById('panel-planned-progress').innerText = `預定 ${pVal.toFixed(2)}%`;
+            document.getElementById('panel-actual-progress').innerText = `實際 ${aVal.toFixed(2)}%`;
+
+            displayActualProgress = baseActualProgress.map((val, idx) => {
+                if (idx < targetMonthIdx) return val; 
+                if (idx === targetMonthIdx) return aVal; 
+                return null; 
+            });
+            if (charts.progress) charts.progress.setOption({ series: [{ name: '實際', data: displayActualProgress }] });
+
+            const xAxisData = [], laborData = [], equipData = [];
+            for (let i = 4; i >= 0; i--) {
+                const tempDate = new Date(dateObj);
+                tempDate.setDate(tempDate.getDate() - i);
+                xAxisData.push(`${tempDate.getMonth()+1}/${tempDate.getDate()}`);
+                laborData.push(8 + ((seed + i) % 7));
+                equipData.push(1 + ((seed + i) % 3));
+            }
+
+            if (charts.labor) {
+                charts.labor.setOption({ xAxis: { data: xAxisData }, series: [{ data: laborData }] });
+                charts.equipment.setOption({ xAxis: { data: xAxisData }, series: [{ data: equipData }] });
+                charts.construction.setOption({ series: [{ data: [20 + (seed % 15), 35 + ((seed*2) % 20)] }] });
+            }
+
+            const weatherEl = document.getElementById('panel-weather');
+            if (dailyOverrides[dateStr]) {
+                const ov = dailyOverrides[dateStr];
+                let icon = (ov.weather.includes('雨') || ov.weather.includes('陣雨')) ? '🌧️' : (ov.weather.includes('陰') ? '☁️' : '☀️');
+                weatherEl.innerText = `${icon} ${ov.weather}`;
+                weatherEl.dataset.raw = ov.weather;
+                
+                let laborArr = ov.labor.split('\n').filter(l => l.trim() !== '');
+                document.getElementById('panel-labor-title').innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>本日現場施作人力 (${laborArr.length}項紀錄)`;
+                document.getElementById('panel-labor-list').innerHTML = laborArr.map(l => `<li>${l}</li>`).join('');
+                document.getElementById('panel-equip-desc').innerText = ov.equip;
+                
+                let constArr = ov.const.split('\n').filter(l => l.trim() !== '');
+                document.getElementById('panel-const-list').innerHTML = constArr.map(l => `<li>${l}</li>`).join('');
+            } else {
+                const weathers = ['晴 / 晴', '晴 / 陰', '陰 / 陰', '陰 / 雨', '晴 / 午後陣雨'];
+                let wStr = weathers[seed % weathers.length];
+                let icon = (wStr.includes('雨') || wStr.includes('陣雨')) ? '🌧️' : (wStr.includes('陰') ? '☁️' : '☀️');
+                weatherEl.innerText = `${icon} ${wStr}`;
+                weatherEl.dataset.raw = wStr;
+
+                const totalLabor = laborData[4];
+                document.getElementById('panel-labor-title').innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>本日現場施作人力 (${totalLabor}人)`;
+                const p1 = Math.floor(totalLabor * 0.4) || 1, p2 = Math.floor(totalLabor * 0.3) || 1, p3 = Math.floor(totalLabor * 0.2) || 1;
+                document.getElementById('panel-labor-list').innerHTML = `<li>工務所：${p1}人</li><li>土方（禾逸）：${p2}人</li><li>機電（協磁）：${p3}人</li><li>點工（旭升）：${totalLabor - p1 - p2 - p3 || 1}人</li>`;
+                document.getElementById('panel-equip-desc').innerText = `（禾逸）PC120挖土機 ${equipData[4]}台`;
+                document.getElementById('panel-const-list').innerHTML = `<li>F~I/1~7 line 第二層土方整地與接地線。</li><li>旭升協助丈量高程。</li><li>基地積水抽水。</li>`;
+            }
+
+            if (!isFromCloudSync && dateStr !== '2026-06-29') {
+                document.getElementById('toast-text').innerText = '歷史資料切換完成！';
+                window.showToast();
+            }
+        };
+
+        window.openModal = function(type) {
+            currentChartType = type;
+            const body = document.getElementById('modal-body');
+            
+            if (type === 'plan') {
+                document.getElementById('modal-title').innerText = '設定預定進度 (113年6月 - 116年9月)';
+                let htmlContent = '<div class="space-y-4">';
+                let dataIndex = 0; 
+                planStructure.forEach(y => {
+                    htmlContent += `<div class="bg-slate-50 p-3 rounded-lg border border-slate-200"><h4 class="font-bold text-indigo-900 mb-2 border-b border-slate-300 pb-1">民國 ${y.year} 年</h4><div class="grid grid-cols-3 sm:grid-cols-4 gap-3">`;
+                    y.months.forEach(m => {
+                        htmlContent += `<div><label class="block text-xs text-gray-600 mb-1">${m}月 (%)</label><input type="number" step="0.01" class="w-full plan-input border border-gray-300 rounded-md p-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" value="${plannedProgress[dataIndex]}" data-index="${dataIndex}" onfocus="this.select()"></div>`;
+                        dataIndex++;
+                    });
+                    htmlContent += `</div></div>`;
+                });
+                body.innerHTML = htmlContent + '</div>';
+            } else if (type === 'daily_report') {
+                document.getElementById('modal-title').innerText = '填寫廠商每日出工報告';
+                
+                let weatherStr = document.getElementById('panel-weather').dataset.raw || '晴 / 晴';
+                let weatherM = weatherStr.split('/')[0].trim(), weatherA = weatherStr.split('/')[1].trim();
+                let laborText = Array.from(document.querySelectorAll('#panel-labor-list li')).map(li => li.innerText).join('\n');
+                let equipText = document.getElementById('panel-equip-desc').innerText;
+                let constText = Array.from(document.querySelectorAll('#panel-const-list li')).map(li => li.innerText).join('\n');
+                
+                body.innerHTML = `
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div><label class="block text-sm text-gray-600 mb-1">日期</label><input type="date" class="w-full border border-gray-300 rounded-lg p-2 bg-slate-100 focus:outline-none" value="${currentSelectedDate}" readonly></div>
+                        <div>
+                            <label class="block text-sm text-gray-600 mb-1">天氣 (上午 / 下午)</label>
+                            <div class="flex gap-2">
+                                <select id="daily-weather-m" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                                    <option value="晴" ${weatherM==='晴'?'selected':''}>晴</option><option value="陰" ${weatherM==='陰'?'selected':''}>陰</option><option value="雨" ${weatherM==='雨'?'selected':''}>雨</option><option value="午後陣雨" ${weatherM==='午後陣雨'?'selected':''}>午後陣雨</option>
+                                </select>
+                                <select id="daily-weather-a" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                                    <option value="晴" ${weatherA==='晴'?'selected':''}>晴</option><option value="陰" ${weatherA==='陰'?'selected':''}>陰</option><option value="雨" ${weatherA==='雨'?'selected':''}>雨</option><option value="午後陣雨" ${weatherA==='午後陣雨'?'selected':''}>午後陣雨</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div><label class="block text-sm text-gray-600 mb-1">預定進度 (%) <span class="text-xs text-indigo-400 font-normal">(自動帶入)</span></label><input type="number" step="0.01" class="w-full border border-gray-300 rounded-lg p-2 bg-slate-100 text-slate-500 cursor-not-allowed focus:outline-none" value="${(plannedProgress[targetMonthIdx] || 0).toFixed(2)}" readonly title="請至右上角「設定預定進度」統一修改"></div>
+                        <div><label class="block text-sm text-gray-600 mb-1">實際進度 (%)</label><input type="number" id="daily-actual-input" step="0.01" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500" value="${(baseActualProgress[targetMonthIdx] || 0).toFixed(2)}" onfocus="this.select()"></div>
+                    </div>
+                    <div class="mb-3"><label class="block text-sm text-gray-600 mb-1">本日現場施作人力 (請換行輸入)</label><textarea id="daily-labor" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 h-24 text-sm resize-none">${laborText}</textarea></div>
+                    <div class="mb-3"><label class="block text-sm text-gray-600 mb-1">機具狀況</label><textarea id="daily-equip" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 h-16 text-sm resize-none">${equipText}</textarea></div>
+                    <div class="mb-2"><label class="block text-sm text-gray-600 mb-1">今日施工作業項目</label><textarea id="daily-const" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 h-24 text-sm resize-none">${constText}</textarea></div>
+                `;
+            } else if (type === 'project_info') {
+                document.getElementById('modal-title').innerText = '編輯工程基本資訊';
+                body.innerHTML = `
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div><label class="block text-sm text-gray-600 mb-1">核定工期 (天)</label><input type="number" id="edit-info-approved" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500" value="${projectInfo.approved}" onfocus="this.select()"></div>
+                        <div><label class="block text-sm text-gray-600 mb-1">使用工期 (天)</label><input type="number" id="edit-info-used" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500" value="${projectInfo.used}" onfocus="this.select()"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div><label class="block text-sm text-gray-600 mb-1">剩餘工期 (天)</label><input type="number" id="edit-info-remaining" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500" value="${projectInfo.remaining}" onfocus="this.select()"></div>
+                        <div><label class="block text-sm text-gray-600 mb-1">工期展延 (天)</label><input type="number" id="edit-info-extension" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500" value="${projectInfo.extension}" onfocus="this.select()"></div>
+                    </div>
+                    <div class="mb-3"><label class="block text-sm text-gray-600 mb-1">展延/免計備註 (選填)</label><input type="text" id="edit-info-ext-note" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500" value="${projectInfo.extensionNote}" placeholder="如：免計5天" onfocus="this.select()"></div>
+                    <div class="grid grid-cols-2 gap-3 mb-2">
+                        <div><label class="block text-sm text-gray-600 mb-1">開工日期</label><input type="text" id="edit-info-start" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500" value="${projectInfo.startDate}" onfocus="this.select()"></div>
+                        <div><label class="block text-sm text-gray-600 mb-1">預定完工日</label><input type="text" id="edit-info-end" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500" value="${projectInfo.endDate}" onfocus="this.select()"></div>
+                    </div>
+                `;
+            }
+            document.getElementById('data-modal').classList.remove('hidden');
+        };
+
+        window.closeModal = function() { 
+            document.getElementById('data-modal').classList.add('hidden'); 
+        };
+
+        // 觸發存檔與雲端寫入
+        window.submitForm = async function() { 
+            let successMsg = '資料已同步成功！';
+            
+            if (currentChartType === 'plan') {
+                const inputs = document.querySelectorAll('.plan-input');
+                inputs.forEach(input => {
+                    let idx = input.getAttribute('data-index');
+                    plannedProgress[idx] = parseFloat(input.value) || 0;
+                });
+                successMsg = '預定進度已儲存！';
+            } else if (currentChartType === 'daily_report') {
+                const actualInput = document.getElementById('daily-actual-input');
+                if (actualInput && targetMonthIdx !== -1) {
+                    baseActualProgress[targetMonthIdx] = parseFloat(actualInput.value) || 0; 
+                    dailyOverrides[currentSelectedDate] = {
+                        weather: `${document.getElementById('daily-weather-m').value} / ${document.getElementById('daily-weather-a').value}`,
+                        labor: document.getElementById('daily-labor').value,
+                        equip: document.getElementById('daily-equip').value,
+                        const: document.getElementById('daily-const').value
+                    };
+                    successMsg = '當日報告已儲存！';
+                }
+            } else if (currentChartType === 'project_info') {
+                projectInfo.approved = document.getElementById('edit-info-approved').value || 0;
+                projectInfo.used = document.getElementById('edit-info-used').value || 0;
+                projectInfo.remaining = document.getElementById('edit-info-remaining').value || 0;
+                projectInfo.extension = document.getElementById('edit-info-extension').value || 0;
+                projectInfo.extensionNote = document.getElementById('edit-info-ext-note').value;
+                projectInfo.startDate = document.getElementById('edit-info-start').value;
+                projectInfo.endDate = document.getElementById('edit-info-end').value;
+                successMsg = '工程基本資訊已更新！';
+            }
+
+            // 更新畫面
+            updateProjectInfoUI();
+            window.changeDate(currentSelectedDate);
+            window.closeModal(); 
+            
+            // 寫入雲端 Firebase
+            if (currentUser && docRef) {
+                try {
+                    await setDoc(docRef, {
+                        projectInfo,
+                        plannedProgress,
+                        baseActualProgress,
+                        dailyOverrides
+                    }, { merge: true });
+                    document.getElementById('toast-text').innerText = `${successMsg} (已備份至雲端☁️)`;
+                } catch(e) {
+                    console.error("雲端寫入錯誤", e);
+                    document.getElementById('toast-text').innerText = `${successMsg} (僅本機儲存，雲端權限不足或未啟用)`;
+                }
+            } else {
+                document.getElementById('toast-text').innerText = `${successMsg} (僅本機儲存，請確認 Firebase 設定)`;
+            }
+            window.showToast();
+        };
+
+        window.showToast = function() {
+            const toast = document.getElementById('toast');
+            toast.classList.remove('opacity-0', 'translate-y-10', 'pointer-events-none');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none');
+            }, 3000);
+        };
+
+        function initCharts() {
+            charts.progress = echarts.init(document.getElementById('progress-chart'));
+            charts.progress.setOption({ 
+                title:{ text:'進度趨勢 S-Curve', textStyle: { color: '#334155' } }, 
+                tooltip: { trigger: 'axis' }, legend: { data: ['預定', '實際'], right: 10 },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis:{ type:'category', data: monthLabels }, yAxis:{ type: 'value', axisLabel: { formatter: '{value} %' } }, 
+                series:[
+                    {name:'預定', type:'line', smooth: true, lineStyle: { color: '#94a3b8' }, itemStyle: { color: '#94a3b8' }, data: plannedProgress},
+                    {name:'實際', type:'line', smooth: true, lineStyle: { color: '#4f46e5', width: 3 }, itemStyle: { color: '#4f46e5' }, data: []}
+                ] 
+            });
+            charts.labor = echarts.init(document.getElementById('labor-chart'));
+            charts.labor.setOption({ 
+                title:{ text:'人力管理 (近五日)', textStyle: { fontSize: 14, color: '#334155' } }, 
+                tooltip: { trigger: 'axis' }, xAxis:{ type:'category', data:[] }, yAxis:{ type: 'value' }, 
+                series:[{ type:'bar', itemStyle: { color: '#10b981', borderRadius: [4, 4, 0, 0] }, data:[] }] 
+            });
+            charts.equipment = echarts.init(document.getElementById('equipment-chart'));
+            charts.equipment.setOption({ 
+                title:{ text:'機具管理 (近五日)', textStyle: { fontSize: 14, color: '#334155' } }, 
+                tooltip: { trigger: 'axis' }, xAxis:{ type:'category', data:[] }, yAxis:{ type: 'value' }, 
+                series:[{ type:'bar', itemStyle: { color: '#f59e0b', borderRadius: [4, 4, 0, 0] }, data:[] }] 
+            });
+            charts.construction = echarts.init(document.getElementById('construction-chart'));
+            charts.construction.setOption({ 
+                title:{ text:'施工項目累計 (組/支)', textStyle: { fontSize: 14, color: '#334155' } }, 
+                tooltip: { trigger: 'axis' }, xAxis:{ type:'category', data:['安全支撐', '中間柱'] }, yAxis:{ type: 'value' }, 
+                series:[{ type:'bar', itemStyle: { color: '#f43f5e', borderRadius: [4, 4, 0, 0] }, barWidth: '40%', data:[] }] 
+            });
+        }
+
+        // 初始化執行程序
+        generateBaseData();
+        window.addEventListener('load', () => {
+            initCharts();
+            updateProjectInfoUI();
+            window.changeDate(currentSelectedDate);
+            
+            setInterval(updateTime, 1000);
+            updateTime();
+
+            window.addEventListener('resize', () => {
+                for (let key in charts) if (charts[key]) charts[key].resize();
+            });
+
+            // 啟動雲端連線
+            initFirebase();
+        });
+    </script>
+</body>
+</html>
