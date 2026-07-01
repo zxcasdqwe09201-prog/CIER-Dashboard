@@ -107,7 +107,7 @@
                 </div>
             </div>
             
-            <!-- 工期進度細節 - 已調整為 md:grid-cols-5 並排免計工期 -->
+            <!-- 工期進度細節 - md:grid-cols-5 並排免計工期 -->
             <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div class="bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 text-center">
                     <p class="text-[11px] text-slate-400 font-bold mb-1">核定工期</p>
@@ -178,13 +178,13 @@
                             <p id="panel-weather" class="font-bold text-amber-600 text-sm" data-raw="晴 / 晴">☀️ 晴 / 晴</p>
                         </div>
                         <div class="text-right">
-                            <p class="text-[11px] text-slate-400 font-bold mb-1">當月進度對比</p>
+                            <p class="text-[11px] text-slate-400 font-bold mb-1">今日進度對比</p>
                             <p class="font-bold text-indigo-600 text-xs" id="panel-planned-progress">預定 29.19%</p>
                             <p class="font-bold text-emerald-600 text-xs mt-0.5" id="panel-actual-progress">實際 10.00%</p>
                         </div>
                     </div>
 
-                    <!-- 現場施工影像 -->
+                    <!-- 現場照片 -->
                     <div>
                         <h3 class="text-indigo-900 font-bold border-b border-indigo-100 pb-1.5 mb-2.5 flex items-center justify-between text-xs tracking-wider">
                             <span class="flex items-center gap-1.5">
@@ -340,6 +340,16 @@
         let baseActualProgress = []; 
         let displayActualProgress = []; 
         let targetMonthIdx = 0;
+
+        // --- 全域數值聚焦高亮輔助函式 ---
+        // 延遲全選能完美避免對 mouseup 事件的物理攔截，完全相容原生手動選取反藍
+        window.selectOnFocus = function(el) {
+            setTimeout(() => {
+                if (document.activeElement === el) {
+                    el.select();
+                }
+            }, 50);
+        };
         
         // --- 民國/西元雙向日期轉換技術 ---
         window.minguoToWestern = function(minguoStr) {
@@ -746,7 +756,7 @@
                         htmlContent += `
                             <div>
                                 <label class="block text-[11px] font-bold text-slate-500 mb-1">${m}月份 (%)</label>
-                                <input type="number" step="0.01" class="w-full plan-input border border-slate-200 rounded-lg p-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono" value="${plannedProgress[dataIndex] || 0}" data-index="${dataIndex}" onfocus="this.select(); this.onmouseup = function() { this.onmouseup = null; return false; }">
+                                <input type="number" step="0.01" class="w-full plan-input border border-slate-200 rounded-lg p-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono" value="${plannedProgress[dataIndex] || 0}" data-index="${dataIndex}" onfocus="window.selectOnFocus(this)">
                             </div>
                         `;
                         dataIndex++;
@@ -780,7 +790,8 @@
                     </div>
                     <div class="grid grid-cols-2 gap-3 mb-3">
                         <div><label class="block text-xs font-bold text-slate-500 mb-1">當月預定進度 (%)</label><input type="number" step="0.01" class="w-full border border-slate-200 rounded-xl p-2 bg-slate-100 text-slate-400 cursor-not-allowed focus:outline-none text-xs font-mono" value="${(plannedProgress[targetMonthIdx] || 0).toFixed(2)}" readonly title="修改預定進度請至 S-Curve 設定"></div>
-                        <div><label class="block text-xs font-bold text-slate-500 mb-1">當月實際進度 (%)</label><input type="number" id="daily-actual-input" step="0.01" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono" value="${(baseActualProgress[targetMonthIdx] || 0).toFixed(2)}" onfocus="this.select(); this.onmouseup = function() { this.onmouseup = null; return false; }"></div>
+                        <!-- 當月實際進度 修改為 每日實際進度 -->
+                        <div><label class="block text-xs font-bold text-slate-500 mb-1">每日實際進度 (%)</label><input type="number" id="daily-actual-input" step="0.01" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono" value="${(baseActualProgress[targetMonthIdx] || 0).toFixed(2)}" onfocus="window.selectOnFocus(this)"></div>
                     </div>
                     <div class="mb-3"><label class="block text-xs font-bold text-slate-500 mb-1">本日施作人力名冊 (請換行輸入)</label><textarea id="daily-labor" class="w-full border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 h-24 text-xs resize-none">${laborText}</textarea></div>
                     <div class="mb-3"><label class="block text-xs font-bold text-slate-500 mb-1">現場機具動態</label><textarea id="daily-equip" class="w-full border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 h-16 text-xs resize-none">${equipText}</textarea></div>
@@ -794,21 +805,51 @@
                 const startWestern = window.minguoToWestern(projectInfo.startDate);
                 const endWestern = window.minguoToWestern(projectInfo.endDate);
 
+                // 生成實際進度總覽 HTML 滾動編輯區塊
+                let actualProgressHtml = `
+                    <div class="mt-4 border-t border-slate-200 pt-3">
+                        <h4 class="font-bold text-slate-800 text-xs mb-2 tracking-wide flex items-center gap-1.5">
+                            <span class="inline-block w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
+                            實際進度總覽 (與每日實際進度連動)
+                        </h4>
+                        <div class="max-h-48 overflow-y-auto space-y-3 pr-1">
+                `;
+                let dataIndex = 0;
+                planStructure.forEach(y => {
+                    actualProgressHtml += `
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            <div class="text-[10px] font-extrabold text-indigo-900 mb-1.5 tracking-wider">民國 ${y.year} 年度</div>
+                            <div class="grid grid-cols-3 gap-2">
+                    `;
+                    y.months.forEach(m => {
+                        actualProgressHtml += `
+                            <div>
+                                <label class="block text-[10px] text-slate-500 font-bold mb-0.5">${m}月 (%)</label>
+                                <input type="number" step="0.01" class="actual-input w-full border border-slate-200 rounded-lg p-1 text-xs focus:ring-2 focus:ring-indigo-500 font-mono" value="${baseActualProgress[dataIndex] || 0}" data-index="${dataIndex}" onfocus="window.selectOnFocus(this)">
+                            </div>
+                        `;
+                        dataIndex++;
+                    });
+                    actualProgressHtml += `</div></div>`;
+                });
+                actualProgressHtml += `</div></div>`;
+
                 body.innerHTML = `
                     <div class="grid grid-cols-2 gap-3 mb-3">
-                        <div><label class="block text-xs font-bold text-slate-500 mb-1">核定總工期 (天)</label><input type="number" id="edit-info-approved" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono" value="${projectInfo.approved}" onfocus="this.select(); this.onmouseup = function() { this.onmouseup = null; return false; }"></div>
-                        <div><label class="block text-xs font-bold text-slate-500 mb-1">工期展延天數 (天)</label><input type="number" id="edit-info-extension" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono" value="${projectInfo.extension}" onfocus="this.select(); this.onmouseup = function() { this.onmouseup = null; return false; }"></div>
+                        <div><label class="block text-xs font-bold text-slate-500 mb-1">核定總工期 (天)</label><input type="number" id="edit-info-approved" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono" value="${projectInfo.approved}" onfocus="window.selectOnFocus(this)"></div>
+                        <div><label class="block text-xs font-bold text-slate-500 mb-1">工期展延天數 (天)</label><input type="number" id="edit-info-extension" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono" value="${projectInfo.extension}" onfocus="window.selectOnFocus(this)"></div>
                     </div>
                     <!-- 原備註欄位已變更為「免計工期(天)」數字輸入框 -->
                     <div class="mb-3">
                         <label class="block text-xs font-bold text-slate-500 mb-1">免計工期 (天)</label>
-                        <input type="number" id="edit-info-exempt" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono" value="${projectInfo.exempt || 0}" placeholder="請輸入免計工期天數" onfocus="this.select(); this.onmouseup = function() { this.onmouseup = null; return false; }">
+                        <input type="number" id="edit-info-exempt" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono" value="${projectInfo.exempt || 0}" placeholder="請輸入免計工期天數" onfocus="window.selectOnFocus(this)">
                     </div>
                     <div class="grid grid-cols-2 gap-3 mb-2">
-                        <!-- 開工與完工日使用 input type="date" 並內嵌點擊直接開啟下拉日曆功能 -->
                         <div><label class="block text-xs font-bold text-slate-500 mb-1">申報開工日期</label><input type="date" id="edit-info-start" onclick="this.showPicker()" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono cursor-pointer" value="${startWestern}"></div>
                         <div><label class="block text-xs font-bold text-slate-500 mb-1">合約預定完工日</label><input type="date" id="edit-info-end" onclick="this.showPicker()" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono cursor-pointer" value="${endWestern}"></div>
                     </div>
+                    <!-- 插入與每日實際進度連動的實際進度總覽 -->
+                    ${actualProgressHtml}
                 `;
             }
             document.getElementById('data-modal').classList.remove('hidden');
@@ -847,13 +888,20 @@
                 projectInfo.extension = document.getElementById('edit-info-extension').value || 0;
                 projectInfo.exempt = parseInt(document.getElementById('edit-info-exempt').value) || 0;
                 
+                // 讀取並儲存實際進度總覽中的所有數值 (雙向連動)
+                const actualInputs = document.querySelectorAll('.actual-input');
+                actualInputs.forEach(input => {
+                    let idx = input.getAttribute('data-index');
+                    baseActualProgress[idx] = parseFloat(input.value) || 0;
+                });
+
                 // 儲存時將西元 YYYY-MM-DD 自動轉換回民國格式儲存到 Firebase
                 const rawStart = document.getElementById('edit-info-start').value;
                 const rawEnd = document.getElementById('edit-info-end').value;
                 projectInfo.startDate = window.westernToMinguo(rawStart) || projectInfo.startDate;
                 projectInfo.endDate = window.westernToMinguo(rawEnd) || projectInfo.endDate;
                 
-                successMsg = '合約基礎資訊修改完成！';
+                successMsg = '合約基礎資訊與實際進度總覽已成功修改！';
             }
 
             updateProjectInfoUI();
@@ -925,31 +973,22 @@
 
             charts.labor = echarts.init(document.getElementById('labor-chart'));
             charts.labor.setOption({ 
-                title:{ text:'每日出工人力 (近五日)', textStyle: { fontSize: 13, color: '#1e293b', fontWeight: 'bold' } }, 
-                tooltip: { trigger: 'axis' }, 
-                grid: { left: '3%', right: '3%', bottom: '3%', top: '20%', containLabel: true },
-                xAxis:{ type:'category', data:[], axisLabel: { color: '#64748b', fontSize: 10 } }, 
-                yAxis:{ type: 'value', axisLabel: { color: '#64748b' } }, 
+                title:{ text:'每日出工人力 (近五日)', textStyle: { fontSize: 13, color: '#0f172a', fontWeight: 'bold' } }, 
+                tooltip: { trigger: 'axis' }, xAxis:{ type:'category', data:[] }, yAxis:{ type: 'value' }, 
                 series:[{ type:'bar', itemStyle: { color: '#10b981', borderRadius: [4, 4, 0, 0] }, data:[] }] 
             });
 
             charts.equipment = echarts.init(document.getElementById('equipment-chart'));
             charts.equipment.setOption({ 
-                title:{ text:'機具動態數量 (近五日)', textStyle: { fontSize: 13, color: '#1e293b', fontWeight: 'bold' } }, 
-                tooltip: { trigger: 'axis' }, 
-                grid: { left: '3%', right: '3%', bottom: '3%', top: '20%', containLabel: true },
-                xAxis:{ type:'category', data:[], axisLabel: { color: '#64748b', fontSize: 10 } }, 
-                yAxis:{ type: 'value', axisLabel: { color: '#64748b' } }, 
+                title:{ text:'機具動態數量 (近五日)', textStyle: { fontSize: 13, color: '#0f172a', fontWeight: 'bold' } }, 
+                tooltip: { trigger: 'axis' }, xAxis:{ type:'category', data:[] }, yAxis:{ type: 'value' }, 
                 series:[{ type:'bar', itemStyle: { color: '#f59e0b', borderRadius: [4, 4, 0, 0] }, data:[] }] 
             });
 
             charts.construction = echarts.init(document.getElementById('construction-chart'));
             charts.construction.setOption({ 
-                title:{ text:'施工項目累計成果 (支)', textStyle: { fontSize: 13, color: '#1e293b', fontWeight: 'bold' } }, 
-                tooltip: { trigger: 'axis' }, 
-                grid: { left: '3%', right: '3%', bottom: '3%', top: '20%', containLabel: true },
-                xAxis:{ type:'category', data:['安全支撐', '中間柱'], axisLabel: { color: '#64748b', fontSize: 10 } }, 
-                yAxis:{ type: 'value', axisLabel: { color: '#64748b' } }, 
+                title:{ text:'施工項目累計成果 (支)', textStyle: { fontSize: 13, color: '#0f172a', fontWeight: 'bold' } }, 
+                tooltip: { trigger: 'axis' }, xAxis:{ type:'category', data:['安全支撐', '中間柱'] }, yAxis:{ type: 'value' }, 
                 series:[{ type:'bar', itemStyle: { color: '#f43f5e', borderRadius: [4, 4, 0, 0] }, barWidth: '40%', data:[] }] 
             });
         }
