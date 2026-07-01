@@ -84,7 +84,7 @@
         
         <!-- 工程基本資訊 (頂部板塊) -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 lg:col-span-12 relative group transition-all duration-300 hover:shadow-md">
-            <!-- 編輯工程資訊按鈕 (標準 Tailwind w-5 h-5 尺寸，hover 顯現機制) -->
+            <!-- 編輯工程資訊按鈕 -->
             <button onclick="window.openModal('project_info')" class="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-500 rounded-full shadow-sm transition-all duration-200 opacity-100 md:opacity-0 md:group-hover:opacity-100" title="編輯工程資訊">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
             </button>
@@ -378,6 +378,40 @@
             return '';
         };
 
+        // 每日實際進度自動向月度進度進行反向彙整，提供 S-Curve 折線繪製
+        function syncActualProgressFromDaily() {
+            // 對於時程規劃中的 31 個月，每一月抓取該月最後一筆記錄到的日實際進度
+            planStructure.forEach((y, yIdx) => {
+                y.months.forEach((m, mIdx) => {
+                    const idx = monthLabels.indexOf(`${y.year}/${m}`);
+                    if (idx !== -1) {
+                        const westY = y.year + 1911;
+                        const mStr = String(m).padStart(2, '0');
+                        
+                        // 尋找該月份下在 dailyOverrides 中最新被修改的 daily實際進度
+                        let latestVal = null;
+                        let latestDay = 0;
+                        
+                        for (let d = 1; d <= 31; d++) {
+                            const dStr = String(d).padStart(2, '0');
+                            const dateKey = `${westY}-${mStr}-${dStr}`;
+                            if (dailyOverrides[dateKey] && dailyOverrides[dateKey].actualProgress !== undefined) {
+                                if (d >= latestDay) {
+                                    latestDay = d;
+                                    latestVal = dailyOverrides[dateKey].actualProgress;
+                                }
+                            }
+                        }
+                        
+                        // 若該月有具體日進度修改，則更新 baseActualProgress 相應位置，確保 S-Curve 與日報連動
+                        if (latestVal !== null) {
+                            baseActualProgress[idx] = latestVal;
+                        }
+                    }
+                });
+            });
+        }
+
         // 圖片本地高效壓縮
         window.compressImage = function(file) {
             return new Promise((resolve) => {
@@ -418,7 +452,8 @@
                     labor: Array.from(document.querySelectorAll('#panel-labor-list li')).map(li => li.innerText.replace('•','').trim()).join('\n'),
                     equip: document.getElementById('panel-equip-desc').innerText,
                     const: Array.from(document.querySelectorAll('#panel-const-list li')).map(li => li.innerText).join('\n'),
-                    photos: []
+                    photos: [],
+                    actualProgress: baseActualProgress[targetMonthIdx] || 0
                 };
             }
             if (!dailyOverrides[currentSelectedDate].photos) {
@@ -444,6 +479,9 @@
 
         // 雲端安全備份寫入
         window.saveToFirebase = async function(successMsg) {
+            // 每次存檔前先重新彙整日實際進度至月進度陣列中，確保雲端 S-Curve 同步
+            syncActualProgressFromDaily();
+
             if (currentUser && docRef) {
                 try {
                     await setDoc(docRef, {
@@ -524,7 +562,6 @@
                             const data = snapshot.data();
                             if (data.projectInfo) {
                                 projectInfo = data.projectInfo;
-                                // 雲端向下相容安全處理：若舊資料無新欄位 exempt，則自動從 extensionNote 解析
                                 if (projectInfo.exempt === undefined) {
                                     if (projectInfo.extensionNote) {
                                         const match = projectInfo.extensionNote.match(/\d+/);
@@ -542,6 +579,8 @@
                             }
                             if (data.dailyOverrides) dailyOverrides = data.dailyOverrides;
 
+                            // 每次從雲端拉取資料，主動觸發一次彙整，確保折線圖正確
+                            syncActualProgressFromDaily();
                             updateProjectInfoUI();
                             window.changeDate(currentSelectedDate, true); 
                             
@@ -591,7 +630,12 @@
             let pVal = 0, aVal = 0;
             if (targetMonthIdx !== -1) {
                 pVal = plannedProgress[targetMonthIdx] || 0;
-                aVal = baseActualProgress[targetMonthIdx] || 0; 
+                // 若當日有錄入 actualProgress 則首選使用，若無則降級使用該月月進度
+                if (dailyOverrides[dateStr] && dailyOverrides[dateStr].actualProgress !== undefined) {
+                    aVal = dailyOverrides[dateStr].actualProgress;
+                } else {
+                    aVal = baseActualProgress[targetMonthIdx] || 0; 
+                }
             }
             
             document.getElementById('panel-planned-progress').innerText = `預定 ${pVal.toFixed(2)}%`;
@@ -731,10 +775,66 @@
                 photoCount.classList.add('hidden');
             }
 
+            // 更新填報日選擇器數值
+            const pickerInput = document.getElementById('history-date');
+            if (pickerInput && pickerInput.value !== dateStr) {
+                pickerInput.value = dateStr;
+            }
+
             // 若是非首頁首次載入，且日期確實有變化才彈出切換 Toast
             if (!isFromCloudSync && dateStr !== todayStr) {
                 window.showToast('成功切換至該日填報紀錄！');
             }
+        };
+
+        // 在「編輯工程基本資訊」modal 中動態渲染月、日切換與實際進度總覽面板
+        window.renderDailyProgressOverview = function(monthLabel) {
+            const container = document.getElementById('daily-progress-rows-container');
+            if (!container) return;
+
+            const [rocY, m] = monthLabel.split('/').map(Number);
+            const westY = rocY + 1911;
+            const daysInMonth = new Date(westY, m, 0).getDate();
+            const mStr = String(m).padStart(2, '0');
+
+            let html = `
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            `;
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dStr = String(d).padStart(2, '0');
+                const dateKey = `${westY}-${mStr}-${dStr}`;
+                
+                // 優先抓取 dailyOverrides 中的 daily實際進度，若無則 fallback 顯示該月月基礎進度
+                const existingVal = (dailyOverrides[dateKey] && dailyOverrides[dateKey].actualProgress !== undefined)
+                    ? dailyOverrides[dateKey].actualProgress
+                    : 0;
+
+                const dayOfWeekStr = ['日', '一', '二', '三', '四', '五', '六'][new Date(westY, m - 1, d).getDay()];
+
+                html += `
+                    <div class="bg-white p-2 rounded-xl border border-slate-200 flex flex-col justify-between shadow-sm">
+                        <span class="text-[10px] font-bold text-slate-500">${mStr}/${dStr} (${dayOfWeekStr})</span>
+                        <input type="number" step="0.01" class="daily-overview-input mt-1.5 w-full border border-slate-200 rounded-lg p-1 text-xs focus:ring-2 focus:ring-indigo-500 font-mono text-slate-800" 
+                               value="${existingVal}" 
+                               data-date="${dateKey}" 
+                               onfocus="window.selectOnFocus(this)">
+                    </div>
+                `;
+            }
+
+            html += `</div>`;
+            container.innerHTML = html;
+        };
+
+        // 供填報 Modal 中的日期 calendar 點選跳轉日報輔助函數
+        window.switchDailyReportDate = function(newDateStr) {
+            if (!newDateStr) return;
+            // 靜默更新當前全局日期與面板狀態
+            window.changeDate(newDateStr, true);
+            // 重新打開「每日填報」 Modal，使其數據與新日期完美同步
+            window.openModal('daily_report');
+            window.showToast(`已載入 ${newDateStr} 現場數據！`);
         };
 
         // 開啟填報彈出視窗
@@ -773,16 +873,25 @@
                 let equipText = document.getElementById('panel-equip-desc').innerText;
                 let constText = Array.from(document.querySelectorAll('#panel-const-list li')).map(li => li.innerText).join('\n');
                 
+                // 抓取當前填報日期的實際進度數值
+                let actualVal = (dailyOverrides[currentSelectedDate] && dailyOverrides[currentSelectedDate].actualProgress !== undefined)
+                    ? dailyOverrides[currentSelectedDate].actualProgress
+                    : (baseActualProgress[targetMonthIdx] || 0);
+
                 body.innerHTML = `
                     <div class="grid grid-cols-2 gap-3 mb-3">
-                        <div><label class="block text-xs font-bold text-slate-500 mb-1">日期 (不可修改)</label><input type="date" class="w-full border border-slate-200 rounded-xl p-2 bg-slate-100 text-slate-400 focus:outline-none text-xs font-mono" value="${currentSelectedDate}" readonly></div>
+                        <!-- 依據需求：原本的「日期 (不可修改)」變更為「日期」，且點選後可以透過下拉 calendar picker 自由跳轉 -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">日期</label>
+                            <input type="date" id="daily-report-date-picker" onchange="window.switchDailyReportDate(this.value)" onclick="this.showPicker()" class="w-full border border-indigo-500/30 bg-white text-slate-800 rounded-xl p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-mono cursor-pointer transition-all" value="${currentSelectedDate}">
+                        </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 mb-1">氣候狀況 (上午 / 下午)</label>
                             <div class="flex gap-2">
-                                <select id="daily-weather-m" class="w-full border border-slate-200 rounded-xl p-1.5 text-xs focus:ring-2 focus:ring-indigo-500">
+                                <select id="daily-weather-m" class="w-full border border-slate-200 rounded-xl p-1.5 text-xs focus:ring-2 focus:ring-indigo-500 bg-white">
                                     <option value="晴" ${weatherM==='晴'?'selected':''}>晴</option><option value="陰" ${weatherM==='陰'?'selected':''}>陰</option><option value="雨" ${weatherM==='雨'?'selected':''}>雨</option>
                                 </select>
-                                <select id="daily-weather-a" class="w-full border border-slate-200 rounded-xl p-1.5 text-xs focus:ring-2 focus:ring-indigo-500">
+                                <select id="daily-weather-a" class="w-full border border-slate-200 rounded-xl p-1.5 text-xs focus:ring-2 focus:ring-indigo-500 bg-white">
                                     <option value="晴" ${weatherA==='晴'?'selected':''}>晴</option><option value="陰" ${weatherA==='陰'?'selected':''}>陰</option><option value="雨" ${weatherA==='雨'?'selected':''}>雨</option>
                                 </select>
                             </div>
@@ -790,67 +899,80 @@
                     </div>
                     <div class="grid grid-cols-2 gap-3 mb-3">
                         <div><label class="block text-xs font-bold text-slate-500 mb-1">當月預定進度 (%)</label><input type="number" step="0.01" class="w-full border border-slate-200 rounded-xl p-2 bg-slate-100 text-slate-400 cursor-not-allowed focus:outline-none text-xs font-mono" value="${(plannedProgress[targetMonthIdx] || 0).toFixed(2)}" readonly title="修改預定進度請至 S-Curve 設定"></div>
-                        <!-- 當月實際進度 修改為 每日實際進度 -->
-                        <div><label class="block text-xs font-bold text-slate-500 mb-1">每日實際進度 (%)</label><input type="number" id="daily-actual-input" step="0.01" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono" value="${(baseActualProgress[targetMonthIdx] || 0).toFixed(2)}" onfocus="window.selectOnFocus(this)"></div>
+                        <!-- 當月實際進度已改為每日實際進度 -->
+                        <div><label class="block text-xs font-bold text-slate-500 mb-1">每日實際進度 (%)</label><input type="number" id="daily-actual-input" step="0.01" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono bg-white" value="${parseFloat(actualVal).toFixed(2)}" onfocus="window.selectOnFocus(this)"></div>
                     </div>
-                    <div class="mb-3"><label class="block text-xs font-bold text-slate-500 mb-1">本日施作人力名冊 (請換行輸入)</label><textarea id="daily-labor" class="w-full border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 h-24 text-xs resize-none">${laborText}</textarea></div>
-                    <div class="mb-3"><label class="block text-xs font-bold text-slate-500 mb-1">現場機具動態</label><textarea id="daily-equip" class="w-full border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 h-16 text-xs resize-none">${equipText}</textarea></div>
-                    <div class="mb-2"><label class="block text-xs font-bold text-slate-500 mb-1">今日施工作業細目</label><textarea id="daily-const" class="w-full border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 h-24 text-xs resize-none">${constText}</textarea></div>
+                    <div class="mb-3"><label class="block text-xs font-bold text-slate-500 mb-1">本日施作人力名冊 (請換行輸入)</label><textarea id="daily-labor" class="w-full border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 h-24 text-xs resize-none bg-white">${laborText}</textarea></div>
+                    <div class="mb-3"><label class="block text-xs font-bold text-slate-500 mb-1">現場機具動態</label><textarea id="daily-equip" class="w-full border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 h-16 text-xs resize-none bg-white">${equipText}</textarea></div>
+                    <div class="mb-2"><label class="block text-xs font-bold text-slate-500 mb-1">今日施工作業細目</label><textarea id="daily-const" class="w-full border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-indigo-500 h-24 text-xs resize-none bg-white">${constText}</textarea></div>
                 `;
 
             } else if (type === 'project_info') {
                 document.getElementById('modal-title').innerText = '編輯工程合約基本資訊';
                 
-                // 將民國字串轉換為西元 YYYY-MM-DD
+                // 將民國開工日期轉換為西元 YYYY-MM-DD 以適應下拉日曆
                 const startWestern = window.minguoToWestern(projectInfo.startDate);
                 const endWestern = window.minguoToWestern(projectInfo.endDate);
 
-                // 生成實際進度總覽 HTML 滾動編輯區塊
-                let actualProgressHtml = `
-                    <div class="mt-4 border-t border-slate-200 pt-3">
-                        <h4 class="font-bold text-slate-800 text-xs mb-2 tracking-wide flex items-center gap-1.5">
-                            <span class="inline-block w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
-                            實際進度總覽 (與每日實際進度連動)
-                        </h4>
-                        <div class="max-h-48 overflow-y-auto space-y-3 pr-1">
-                `;
-                let dataIndex = 0;
-                planStructure.forEach(y => {
-                    actualProgressHtml += `
-                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                            <div class="text-[10px] font-extrabold text-indigo-900 mb-1.5 tracking-wider">民國 ${y.year} 年度</div>
-                            <div class="grid grid-cols-3 gap-2">
-                    `;
-                    y.months.forEach(m => {
-                        actualProgressHtml += `
-                            <div>
-                                <label class="block text-[10px] text-slate-500 font-bold mb-0.5">${m}月 (%)</label>
-                                <input type="number" step="0.01" class="actual-input w-full border border-slate-200 rounded-lg p-1 text-xs focus:ring-2 focus:ring-indigo-500 font-mono" value="${baseActualProgress[dataIndex] || 0}" data-index="${dataIndex}" onfocus="window.selectOnFocus(this)">
-                            </div>
-                        `;
-                        dataIndex++;
+                // 動態生成帶有 Month Dropdown 及 scrollable 「日級」實際進度總覽容器
+                let monthOptionsHtml = '';
+                let defaultFilterMonth = '';
+                
+                // 生成月份選取器（包含 114/06 - 116/12共31個月）
+                planStructure.forEach((y, yIdx) => {
+                    y.months.forEach((m, mIdx) => {
+                        const optionValue = `${y.year}/${m}`;
+                        if (yIdx === 0 && mIdx === 0) defaultFilterMonth = optionValue;
+                        
+                        // 若剛好等於當前全局 selected 的月份，則作為預設選取項
+                        const currentGlobalMonthLabel = `${new Date(currentSelectedDate).getFullYear() - 1911}/${new Date(currentSelectedDate).getMonth() + 1}`;
+                        if (currentGlobalMonthLabel === optionValue) {
+                            defaultFilterMonth = optionValue;
+                        }
+
+                        monthOptionsHtml += `<option value="${optionValue}" ${defaultFilterMonth === optionValue ? 'selected' : ''}>民國 ${y.year} 年 ${m} 月</option>`;
                     });
-                    actualProgressHtml += `</div></div>`;
                 });
-                actualProgressHtml += `</div></div>`;
 
                 body.innerHTML = `
                     <div class="grid grid-cols-2 gap-3 mb-3">
-                        <div><label class="block text-xs font-bold text-slate-500 mb-1">核定總工期 (天)</label><input type="number" id="edit-info-approved" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono" value="${projectInfo.approved}" onfocus="window.selectOnFocus(this)"></div>
-                        <div><label class="block text-xs font-bold text-slate-500 mb-1">工期展延天數 (天)</label><input type="number" id="edit-info-extension" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono" value="${projectInfo.extension}" onfocus="window.selectOnFocus(this)"></div>
+                        <div><label class="block text-xs font-bold text-slate-500 mb-1">核定總工期 (天)</label><input type="number" id="edit-info-approved" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono bg-white" value="${projectInfo.approved}" onfocus="window.selectOnFocus(this)"></div>
+                        <div><label class="block text-xs font-bold text-slate-500 mb-1">工期展延天數 (天)</label><input type="number" id="edit-info-extension" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono bg-white" value="${projectInfo.extension}" onfocus="window.selectOnFocus(this)"></div>
                     </div>
-                    <!-- 原備註欄位已變更為「免計工期(天)」數字輸入框 -->
                     <div class="mb-3">
                         <label class="block text-xs font-bold text-slate-500 mb-1">免計工期 (天)</label>
-                        <input type="number" id="edit-info-exempt" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono" value="${projectInfo.exempt || 0}" placeholder="請輸入免計工期天數" onfocus="window.selectOnFocus(this)">
+                        <input type="number" id="edit-info-exempt" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono bg-white" value="${projectInfo.exempt || 0}" placeholder="請輸入免計工期天數" onfocus="window.selectOnFocus(this)">
                     </div>
-                    <div class="grid grid-cols-2 gap-3 mb-2">
-                        <div><label class="block text-xs font-bold text-slate-500 mb-1">申報開工日期</label><input type="date" id="edit-info-start" onclick="this.showPicker()" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono cursor-pointer" value="${startWestern}"></div>
-                        <div><label class="block text-xs font-bold text-slate-500 mb-1">合約預定完工日</label><input type="date" id="edit-info-end" onclick="this.showPicker()" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono cursor-pointer" value="${endWestern}"></div>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div><label class="block text-xs font-bold text-slate-500 mb-1">申報開工日期</label><input type="date" id="edit-info-start" onclick="this.showPicker()" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono cursor-pointer bg-white" value="${startWestern}"></div>
+                        <div><label class="block text-xs font-bold text-slate-500 mb-1">合約預定完工日</label><input type="date" id="edit-info-end" onclick="this.showPicker()" class="w-full border border-slate-200 rounded-xl p-2 focus:ring-2 focus:ring-indigo-500 text-xs font-mono cursor-pointer bg-white" value="${endWestern}"></div>
                     </div>
-                    <!-- 插入與每日實際進度連動的實際進度總覽 -->
-                    ${actualProgressHtml}
+
+                    <!-- 實際進度總覽核心：細緻到每日的修改機制，與本日現場動態連動 -->
+                    <div class="border-t border-slate-200 pt-3">
+                        <div class="flex justify-between items-center mb-2.5">
+                            <h4 class="font-bold text-slate-800 text-xs tracking-wide flex items-center gap-1.5">
+                                <span class="inline-block w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
+                                實際進度總覽 (細緻至日級，精準連動)
+                            </h4>
+                            
+                            <!-- 月度快速選取器 -->
+                            <select id="overview-month-filter" onchange="window.renderDailyProgressOverview(this.value)" class="border border-slate-200 rounded-lg p-1 text-[11px] font-bold text-indigo-900 bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                ${monthOptionsHtml}
+                            </select>
+                        </div>
+                        
+                        <!-- 每日數據表單容器 -->
+                        <div id="daily-progress-rows-container" class="max-h-52 overflow-y-auto p-1 bg-slate-50 border border-slate-100 rounded-xl">
+                            <!-- 依據 selected Month 動態生成 -->
+                        </div>
+                    </div>
                 `;
+
+                // 首次開啟 Modal 時，初始化渲染預設月份
+                setTimeout(() => {
+                    window.renderDailyProgressOverview(defaultFilterMonth);
+                }, 50);
             }
             document.getElementById('data-modal').classList.remove('hidden');
         };
@@ -859,7 +981,7 @@
             document.getElementById('data-modal').classList.add('hidden'); 
         };
 
-        // 觸發存檔與雲端寫入
+        // 儲存或提交填報表單
         window.submitForm = async function() { 
             let successMsg = '資料同步更新成功！';
             
@@ -873,29 +995,46 @@
             } else if (currentChartType === 'daily_report') {
                 const actualInput = document.getElementById('daily-actual-input');
                 if (actualInput && targetMonthIdx !== -1) {
-                    baseActualProgress[targetMonthIdx] = parseFloat(actualInput.value) || 0; 
-                    dailyOverrides[currentSelectedDate] = {
-                        weather: `${document.getElementById('daily-weather-m').value} / ${document.getElementById('daily-weather-a').value}`,
-                        labor: document.getElementById('daily-labor').value,
-                        equip: document.getElementById('daily-equip').value,
-                        const: document.getElementById('daily-const').value,
-                        photos: dailyOverrides[currentSelectedDate]?.photos || [] 
-                    };
-                    successMsg = '本日工程報告填報完成！';
+                    const parsedVal = parseFloat(actualInput.value) || 0;
+                    
+                    // 新增或更新該選定日期的 dailyOverrides 中日級 actualProgress 數值
+                    if (!dailyOverrides[currentSelectedDate]) {
+                        dailyOverrides[currentSelectedDate] = { photos: [] };
+                    }
+                    
+                    dailyOverrides[currentSelectedDate].weather = `${document.getElementById('daily-weather-m').value} / ${document.getElementById('daily-weather-a').value}`;
+                    dailyOverrides[currentSelectedDate].labor = document.getElementById('daily-labor').value;
+                    dailyOverrides[currentSelectedDate].equip = document.getElementById('daily-equip').value;
+                    dailyOverrides[currentSelectedDate].const = document.getElementById('daily-const').value;
+                    dailyOverrides[currentSelectedDate].actualProgress = parsedVal;
+                    
+                    successMsg = '本日工程報告與每日實際進度填報完成！';
                 }
             } else if (currentChartType === 'project_info') {
                 projectInfo.approved = document.getElementById('edit-info-approved').value || 0;
                 projectInfo.extension = document.getElementById('edit-info-extension').value || 0;
                 projectInfo.exempt = parseInt(document.getElementById('edit-info-exempt').value) || 0;
                 
-                // 讀取並儲存實際進度總覽中的所有數值 (雙向連動)
-                const actualInputs = document.querySelectorAll('.actual-input');
-                actualInputs.forEach(input => {
-                    let idx = input.getAttribute('data-index');
-                    baseActualProgress[idx] = parseFloat(input.value) || 0;
+                // 逐一讀取日級實際進度表單中的修改並寫入 overrides 內
+                const dailyInputs = document.querySelectorAll('.daily-overview-input');
+                dailyInputs.forEach(input => {
+                    const dateKey = input.getAttribute('data-date');
+                    const val = parseFloat(input.value) || 0;
+                    
+                    if (!dailyOverrides[dateKey]) {
+                        // 如果該日期還不存在紀錄，在設定實際進度時初始化基礎範本結構
+                        dailyOverrides[dateKey] = {
+                            weather: '晴 / 晴',
+                            labor: '工務所：9人\n土方（禾逸）：5人\n機電（協磁）：1人\n點工（旭升）：1人',
+                            equip: '（禾逸）PC120挖土機 3台',
+                            const: 'F~I/1~7 line 第二層土方整地與接地線。\n旭升協助丈量高程。\n基地積水抽水。',
+                            photos: []
+                        };
+                    }
+                    dailyOverrides[dateKey].actualProgress = val;
                 });
 
-                // 儲存時將西元 YYYY-MM-DD 自動轉換回民國格式儲存到 Firebase
+                // 儲存開工與完工日期
                 const rawStart = document.getElementById('edit-info-start').value;
                 const rawEnd = document.getElementById('edit-info-end').value;
                 projectInfo.startDate = window.westernToMinguo(rawStart) || projectInfo.startDate;
