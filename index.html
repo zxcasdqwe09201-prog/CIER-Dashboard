@@ -956,14 +956,14 @@
                         const currentGlobalMonthLabel = `${new Date(currentSelectedDate).getFullYear() - 1911}/${new Date(currentSelectedDate).getMonth() + 1}`;
                         if (currentGlobalMonthLabel === optionValue) {
                             defaultFilterMonth = optionValue;
-                        } else if (!defaultFilterMonth && y.year === 115 && m === 7) {
-                            defaultFilterMonth = optionValue; // 備用 fallback 115/7
+                        } else if (!defaultFilterMonth && y.year === 115 && m === 6) {
+                            defaultFilterMonth = optionValue; // 預備預設為 115/6
                         }
                         monthOptionsHtml += `<option value="${optionValue}" ${defaultFilterMonth === optionValue ? 'selected' : ''}>民國 ${y.year} 年 ${m} 月</option>`;
                     });
                 });
 
-                if (!defaultFilterMonth) defaultFilterMonth = "115/7";
+                if (!defaultFilterMonth) defaultFilterMonth = "115/6";
 
                 body.innerHTML = `
                     <div class="grid grid-cols-2 gap-3 mb-3">
