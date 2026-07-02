@@ -308,7 +308,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Firebase 設置
         const firebaseConfig = {
@@ -507,6 +507,7 @@
                     equip: '',
                     const: '',
                     photos: [],
+                    _photosLoaded: true, // 全新一天，本地就是最新狀態，不用再向雲端讀取
                     actualProgress: baseActualProgress[targetMonthIdx] || 0
                 };
             }
@@ -584,6 +585,51 @@
             document.getElementById('image-viewer-modal').classList.add('hidden');
         };
 
+        // 每日照片子集合參照（每張照片一份獨立小文件，避免塞爆主文件的 1MiB 上限）
+        function dailyPhotosColRef(dateStr) {
+            return collection(db, 'artifacts', appId, 'public', 'data', 'daily_reports', dateStr, 'photos');
+        }
+
+        // 把目前記憶體裡的照片陣列同步進 Firestore 子集合（依索引覆寫，最多 15 張）
+        async function syncPhotosToFirestore(dateStr) {
+            if (!db) return;
+            const photos = dailyOverrides[dateStr]?.photos || [];
+            const colRef = dailyPhotosColRef(dateStr);
+            const tasks = [];
+            for (let i = 0; i < 15; i++) {
+                const photoDocRef = doc(colRef, String(i));
+                if (i < photos.length) {
+                    tasks.push(setDoc(photoDocRef, { data: photos[i] }));
+                } else {
+                    tasks.push(deleteDoc(photoDocRef).catch(() => {})); // 不存在也沒關係，忽略錯誤
+                }
+            }
+            await Promise.all(tasks);
+        }
+
+        // 從 Firestore 子集合讀回某一天的照片，只在第一次切換到該日期時抓取（有快取，不重複讀取）
+        async function loadPhotosFromFirestore(dateStr) {
+            if (!db || !dailyOverrides[dateStr]) return;
+            if (dailyOverrides[dateStr]._photosLoaded) return; // 已讀取過，跳過
+            try {
+                const snapshot = await getDocs(dailyPhotosColRef(dateStr));
+                const photos = new Array(snapshot.size);
+                let idx = 0;
+                snapshot.forEach((docSnap) => {
+                    const i = parseInt(docSnap.id, 10);
+                    photos[!isNaN(i) ? i : idx] = docSnap.data().data;
+                    idx++;
+                });
+                dailyOverrides[dateStr].photos = photos.filter(p => p !== undefined && p !== null);
+                dailyOverrides[dateStr]._photosLoaded = true;
+                if (currentSelectedDate === dateStr) {
+                    window.changeDate(dateStr, true);
+                }
+            } catch (e) {
+                console.warn('讀取照片子集合失敗：', e);
+            }
+        }
+
         // 雲端專案設定寫入
         window.saveProjectConfig = async function(successMsg) {
             if (currentUser && projectConfigRef) {
@@ -610,7 +656,10 @@
             if (currentUser && dailyReportsColRef) {
                 try {
                     const reportRef = doc(db, 'artifacts', appId, 'public', 'data', 'daily_reports', dateStr);
-                    await setDoc(reportRef, dailyOverrides[dateStr] || {}, { merge: true });
+                    // 主文件只存文字資料，不含照片本體（照片改存獨立子集合，避免撐爆 1MiB 上限）
+                    const { photos, _drive, _photosLoaded, ...reportDataOnly } = dailyOverrides[dateStr] || {};
+                    await setDoc(reportRef, reportDataOnly, { merge: true });
+                    await syncPhotosToFirestore(dateStr);
                     window.showToast(`${successMsg} (日誌備份成功 ☁️)`);
                 } catch(e) {
                     console.error("雲端日誌存儲失敗", e);
@@ -1290,7 +1339,14 @@
                     // 2. 監聽每日報告集合
                     onSnapshot(dailyReportsColRef, (snapshot) => {
                         snapshot.docs.forEach((doc) => {
+                            const existingPhotos = dailyOverrides[doc.id]?.photos;
+                            const existingPhotosLoaded = dailyOverrides[doc.id]?._photosLoaded;
                             dailyOverrides[doc.id] = doc.data();
+                            // 主文件不再含照片，這裡把本地已快取的照片資料補回去，避免即時監聽把畫面上的照片清空
+                            if (existingPhotosLoaded) {
+                                dailyOverrides[doc.id].photos = existingPhotos || [];
+                                dailyOverrides[doc.id]._photosLoaded = true;
+                            }
                         });
                         syncActualProgressFromDaily();
                         window.changeDate(currentSelectedDate, true); 
@@ -1324,6 +1380,12 @@
         // 載入指定日期填報數據
         window.changeDate = function(dateStr, isFromCloudSync = false) {
             currentSelectedDate = dateStr;
+
+            // 若該日尚未讀取過照片子集合，背景讀取一次（讀完會自動重新渲染這個日期）
+            if (dailyOverrides[dateStr] && !dailyOverrides[dateStr]._photosLoaded && db) {
+                loadPhotosFromFirestore(dateStr).catch(() => {});
+            }
+
             const dateObj = new Date(dateStr);
             const rocY = dateObj.getFullYear() - 1911;
             const m = dateObj.getMonth() + 1;
@@ -1860,7 +1922,7 @@
                         const parsedVal = parseFloat(actualInput.value) || 0;
                         
                         if (!dailyOverrides[currentSelectedDate]) {
-                            dailyOverrides[currentSelectedDate] = { photos: [] };
+                            dailyOverrides[currentSelectedDate] = { photos: [], _photosLoaded: true };
                         }
                         
                         dailyOverrides[currentSelectedDate].weather = `${document.getElementById('daily-weather-m').value} / ${document.getElementById('daily-weather-a').value}`;
@@ -1919,7 +1981,8 @@
                                     labor: '',
                                     equip: '',
                                     const: '',
-                                    photos: []
+                                    photos: [],
+                                    _photosLoaded: true
                                 };
                             }
                             dailyOverrides[dateKey].actualProgress = val;
