@@ -57,6 +57,8 @@
         .fm-menu-item.danger { color: #e11d48; }
         .fm-check { width: 1.1rem; height: 1.1rem; accent-color: #4f46e5; cursor: pointer; }
         #fm-drop-overlay { pointer-events: none; }
+        html[data-readonly="true"] .edit-only { display: none !important; }
+        html:not([data-readonly="true"]) .readonly-only { display: none !important; }
         .fm-bulk-btn { padding: 0.4rem 0.75rem; border-radius: 0.6rem; font-size: 0.8rem; font-weight: 700; color: #3730a3; }
         .fm-bulk-btn:hover { background: #e0e7ff; }
         .thumb-scrollbar::-webkit-scrollbar { height: 4px; }
@@ -84,6 +86,10 @@
             <div>
                 <div class="flex items-center gap-3">
                     <span class="inline-flex h-3.5 w-3.5 rounded-full bg-emerald-400 cloud-pulse" id="connection-indicator" title="系統同步中"></span>
+                    <span class="readonly-only inline-flex items-center gap-1 bg-amber-400/15 text-amber-300 border border-amber-400/30 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wider whitespace-nowrap">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        唯讀檢視模式
+                    </span>
                     <h1 class="text-xl md:text-2xl font-extrabold tracking-wider bg-gradient-to-r from-white via-slate-100 to-indigo-200 bg-clip-text text-transparent">
                         中華經濟研究院興建院舍大樓統包工程
                     </h1>
@@ -102,13 +108,13 @@
                 </div>
 
                 <!-- 填報按鈕 -->
-                <button onclick="window.openModal('daily_report')" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-4 py-2 rounded-xl font-bold shadow-lg shadow-blue-950/20 hover:shadow-indigo-500/25 hover:-translate-y-0.5 transition-all duration-200 text-xs md:text-sm flex items-center gap-2">
+                <button onclick="window.openModal('daily_report')" class="edit-only bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-4 py-2 rounded-xl font-bold shadow-lg shadow-blue-950/20 hover:shadow-indigo-500/25 hover:-translate-y-0.5 transition-all duration-200 text-xs md:text-sm flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                     <span>填報資料</span>
                 </button>
                 
                 <!-- 預定進度設定 -->
-                <button onclick="window.openModal('plan')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600/50 px-3.5 py-2 rounded-xl font-bold transition-all duration-200 text-xs md:text-sm">
+                <button onclick="window.openModal('plan')" class="edit-only bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600/50 px-3.5 py-2 rounded-xl font-bold transition-all duration-200 text-xs md:text-sm">
                     預定進度設定
                 </button>
                 
@@ -132,7 +138,7 @@
         <!-- 工程基本資訊 (頂部板塊) -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 lg:col-span-12 relative group transition-all duration-300 hover:shadow-md">
             <!-- 編輯工程資訊按鈕 -->
-            <button onclick="window.openModal('project_info')" class="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-500 rounded-full shadow-sm transition-all duration-200 opacity-100 md:opacity-60 md:group-hover:opacity-100" title="編輯工程資訊與雲端備份">
+            <button onclick="window.openModal('project_info')" class="edit-only absolute top-4 right-4 p-2 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-500 rounded-full shadow-sm transition-all duration-200 opacity-100 md:opacity-60 md:group-hover:opacity-100" title="編輯工程資訊與雲端備份">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
             </button>
 
@@ -268,7 +274,7 @@
                         </h2>
                         <p id="panel-date-display" class="text-xs text-slate-500 font-mono mt-0.5 font-semibold">--年--月--日 (---)</p>
                     </div>
-                    <button onclick="window.openModal('daily_report')" class="p-2 bg-white hover:bg-indigo-50 text-indigo-600 rounded-full shadow-sm border border-slate-100 transition-all duration-200" title="編輯本日數據">
+                    <button onclick="window.openModal('daily_report')" class="edit-only p-2 bg-white hover:bg-indigo-50 text-indigo-600 rounded-full shadow-sm border border-slate-100 transition-all duration-200" title="編輯本日數據">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                     </button>
                 </div>
@@ -294,7 +300,7 @@
                                 <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                 現場照片
                             </span>
-                            <button onclick="document.getElementById('quick-photo-upload').click()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all shadow-sm border border-indigo-100 flex items-center gap-1">
+                            <button onclick="document.getElementById('quick-photo-upload').click()" class="edit-only bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all shadow-sm border border-indigo-100 flex items-center gap-1">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                                 上傳施工相片
                             </button>
@@ -316,7 +322,7 @@
                         <div id="panel-photo-empty" class="w-full h-44 bg-slate-50 border border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-400 gap-2 cursor-pointer transition-all duration-200 hover:bg-indigo-50/40 hover:border-indigo-400 hover:text-indigo-600" onclick="document.getElementById('quick-photo-upload').click()">
                             <svg class="w-8 h-8 opacity-60 transition-transform duration-200 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                             <span class="text-xs font-semibold">今日尚未新增照片紀錄</span>
-                            <span class="text-[10px] text-slate-400 font-medium">（支援點擊此處或拖曳相片直接上傳）</span>
+                            <span class="edit-only text-[10px] text-slate-400 font-medium">（支援點擊此處或拖曳相片直接上傳）</span>
                         </div>
                         
                         <p id="panel-photo-count" class="text-[10px] text-slate-400 text-right mt-1.5 hidden font-mono"></p>
@@ -380,7 +386,7 @@
                 <div class="p-4 border-b border-slate-100">
                     <div class="flex items-center justify-between gap-2">
                         <h2 class="font-extrabold text-slate-800">相片資料夾</h2>
-                        <label class="cursor-pointer text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg flex items-center gap-1.5">
+                        <label class="edit-only cursor-pointer text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg flex items-center gap-1.5">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                             上傳今日照片
                             <input type="file" accept="image/*" multiple class="hidden" onchange="window.photoUploadToDate(this, 'today')">
@@ -423,7 +429,7 @@
             </div>
             <div class="flex items-center gap-1">
                 <button type="button" onclick="window.lightboxDownload()" class="lightbox-btn" title="下載"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"></path></svg></button>
-                <button type="button" id="lightbox-delete-btn" onclick="window.lightboxDelete()" class="lightbox-btn hover:!bg-rose-600" title="刪除"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                <button type="button" id="lightbox-delete-btn" onclick="window.lightboxDelete()" class="edit-only lightbox-btn hover:!bg-rose-600" title="刪除"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                 <button type="button" onclick="window.closeLightbox()" class="lightbox-btn" title="關閉 (Esc)"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
         </div>
@@ -511,6 +517,11 @@
         import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, getDocs, deleteDoc, getCountFromServer } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // 唯讀模式：<html data-readonly="true"> 時啟用（view.html 即為開啟唯讀模式的 index.html）
+        // 會隱藏所有新增／編輯／上傳／刪除功能，並攔截所有寫入雲端的函式
+        const READ_ONLY = document.documentElement.dataset.readonly === 'true';
+        if (READ_ONLY) document.title = document.title.replace(/（唯讀檢視版）$/, '') + '（唯讀檢視版）';
+
         // Firebase 設置
         const firebaseConfig = {
             apiKey: "AIzaSyD8djSLroOTp4EoASydCAHLk5ULfqC4UtU",
@@ -527,7 +538,7 @@
 
         // Google Drive API OAuth2 連接權限
         // 檔案管理模組需要讀寫「團隊共用資料夾」中其他成員上傳的檔案，drive.file 只看得到自己上傳的，因此改用完整 drive 權限
-        const SCOPES = 'https://www.googleapis.com/auth/drive';
+        const SCOPES = READ_ONLY ? 'https://www.googleapis.com/auth/drive.readonly' : 'https://www.googleapis.com/auth/drive';
         let tokenClient;
         let accessToken = null;
 
@@ -1868,7 +1879,7 @@
                     };
 
                     thumbWrapper.appendChild(thumb);
-                    thumbWrapper.appendChild(delBtn);
+                    if (!READ_ONLY) thumbWrapper.appendChild(delBtn);
                     thumbnailsContainer.appendChild(thumbWrapper);
                 });
 
@@ -2638,7 +2649,7 @@
                         const snap = await getCountFromServer(dailyPhotosColRef(d));
                         const n = snap.data().count;
                         if (dailyOverrides[d]) dailyOverrides[d].photoCount = n;
-                        setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'daily_reports', d), { photoCount: n }, { merge: true }).catch(() => {});
+                        if (!READ_ONLY) setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'daily_reports', d), { photoCount: n }, { merge: true }).catch(() => {});
                     } catch (e) {
                         console.warn('照片張數查詢失敗：', d, e);
                     } finally {
@@ -2766,7 +2777,7 @@
             document.getElementById('photo-folder-meta').innerText = metaParts.join('・');
 
             document.getElementById('photo-folder-actions').innerHTML = `
-                <label class="${left > 0 ? 'cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white' : 'pointer-events-none bg-slate-100 text-slate-400'} text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5">
+                <label class="edit-only ${left > 0 ? 'cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white' : 'pointer-events-none bg-slate-100 text-slate-400'} text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M17 8l-5-5-5 5M12 3v12"></path></svg>
                     上傳到此資料夾
                     <input type="file" accept="image/*" multiple class="hidden" ${left > 0 ? '' : 'disabled'} onchange="window.photoUploadToDate(this, '${d}')">
@@ -2777,7 +2788,9 @@
                 </button>
                 <button type="button" onclick="window.changeDate('${d}', true); window.switchView('dashboard');" class="text-xs font-bold px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">查看當日戰情</button>`;
 
-            if (photos.length === 0) {
+            if (photos.length === 0 && READ_ONLY) {
+                grid.innerHTML = `<div class="col-span-full border-2 border-dashed border-slate-200 rounded-2xl py-16 text-center text-slate-400 font-bold">此資料夾沒有照片</div>`;
+            } else if (photos.length === 0) {
                 grid.innerHTML = `<label class="col-span-full cursor-pointer border-2 border-dashed border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/40 rounded-2xl py-16 flex flex-col items-center justify-center text-center transition-colors" id="photo-drop-empty">
                     <svg class="w-12 h-12 text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                     <p class="font-bold text-slate-500">此資料夾還沒有照片</p>
@@ -3060,6 +3073,10 @@
         }
 
         window.fmConnect = async function() {
+            if (!projectInfo.googleClientId && READ_ONLY) {
+                fm.status = 'error'; fm.error = '系統尚未設定 Google 連線，請洽系統管理者'; fmRender();
+                return;
+            }
             if (!projectInfo.googleClientId) {
                 window.showToast('請先在「編輯工程資訊」填入 Google Client ID');
                 window.switchView('dashboard');
@@ -3276,10 +3293,10 @@
                     <button type="button" onclick="window.fmClearSelection()" class="w-8 h-8 rounded-lg hover:bg-indigo-100 flex items-center justify-center text-indigo-700" title="取消選取" aria-label="取消選取"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                     <span class="text-sm font-bold text-indigo-800 mr-2">已選取 ${sel} 項</span>
                     <button type="button" onclick="window.fmAction('download')" class="fm-bulk-btn">下載</button>
-                    <button type="button" onclick="window.fmAction('move')" class="fm-bulk-btn">移動</button>
-                    ${sel === 1 ? `<button type="button" onclick="window.fmAction('rename')" class="fm-bulk-btn">重新命名</button>` : ''}
+                    <button type="button" onclick="window.fmAction('move')" class="edit-only fm-bulk-btn">移動</button>
+                    ${sel === 1 ? `<button type="button" onclick="window.fmAction('rename')" class="edit-only fm-bulk-btn">重新命名</button>` : ''}
                     ${sel === 1 && !fmIsFolder(selItems[0] || {}) ? `<button type="button" onclick="window.fmAction('drive')" class="fm-bulk-btn">在雲端硬碟開啟</button>` : ''}
-                    <button type="button" onclick="window.fmAction('delete')" class="fm-bulk-btn !text-rose-600">刪除</button>
+                    <button type="button" onclick="window.fmAction('delete')" class="edit-only fm-bulk-btn !text-rose-600">刪除</button>
                 </div>` : '';
         }
 
@@ -3292,7 +3309,7 @@
                             ${inSearch ? `<svg class="w-4 h-4 text-slate-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg><span class="px-2 py-1 font-extrabold text-slate-800 text-lg whitespace-nowrap">搜尋「${escapeHtml(fm.searchTerm)}」</span>` : ''}
                         </nav>
                         <div class="flex items-center gap-2">
-                            <div class="relative">
+                            <div class="edit-only relative">
                                 <button type="button" onclick="window.fmToggleNewMenu(event)" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold pl-3 pr-4 py-2.5 rounded-xl shadow-sm flex items-center gap-1.5">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>新增
                                 </button>
@@ -3326,6 +3343,9 @@
             let body;
             if (fm.status === 'connecting') {
                 body = `<div class="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div><p class="font-bold text-slate-600">正在連線 Google 雲端硬碟…</p><p class="text-xs text-slate-400 mt-1">若跳出 Google 登入視窗，請選擇有檔案庫權限的帳號</p>`;
+            } else if (fm.status === 'setup' && READ_ONLY) {
+                body = `<h2 class="text-xl font-extrabold text-slate-800">尚無可檢視的檔案庫</h2>
+                    <p class="text-sm text-slate-500 mt-2 max-w-md">${fm.error ? escapeHtml(fm.error) : '專案檔案庫尚未設定，請洽系統管理者。'}</p>`;
             } else if (fm.status === 'setup') {
                 body = `
                     <h2 class="text-xl font-extrabold text-slate-800">設定專案檔案庫</h2>
@@ -3354,7 +3374,8 @@
                     <h2 class="text-xl font-extrabold text-slate-800">專案檔案管理</h2>
                     <p class="text-sm text-slate-500 mt-2 max-w-md">檔案存放在 Google 雲端硬碟的專案檔案庫。請先用 Google 帳號登入，登入一次約可使用 1 小時，逾時再按一次即可。</p>
                     ${fm.status === 'error' ? `<p class="text-sm text-rose-600 bg-rose-50 rounded-xl px-4 py-3 mt-4 max-w-md">連線失敗：${escapeHtml(fm.error)}</p>` : ''}
-                    <div class="mt-6">${btn(projectInfo.googleClientId ? '連線 Google 雲端硬碟' : '前往設定 Google Client ID', 'window.fmConnect()')}</div>`;
+                    <div class="mt-6">${btn(projectInfo.googleClientId || READ_ONLY ? '連線 Google 雲端硬碟' : '前往設定 Google Client ID', 'window.fmConnect()')}</div>
+                    ${READ_ONLY ? '<p class="text-xs text-slate-400 mt-3">唯讀模式：只能瀏覽、預覽與下載，不會修改雲端硬碟中的檔案</p>' : ''}`;
             }
             return `<div class="flex-1 flex flex-col items-center justify-center text-center p-8">${body}</div>`;
         }
@@ -3368,8 +3389,8 @@
             return `<div class="py-16 flex flex-col items-center text-center">
                 <svg class="w-16 h-16 text-slate-200 mb-3" fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2h-8l-2-2z"></path></svg>
                 <p class="font-bold text-slate-500">這個資料夾是空的</p>
-                <p class="text-sm text-slate-400 mt-1 mb-5">把檔案拖曳到這裡上傳，或使用下方按鈕</p>
-                <div class="flex flex-wrap justify-center gap-2">
+                <p class="edit-only text-sm text-slate-400 mt-1 mb-5">把檔案拖曳到這裡上傳，或使用下方按鈕</p>
+                <div class="edit-only flex flex-wrap justify-center gap-2">
                     <button type="button" onclick="document.getElementById('fm-file-input').click()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl">上傳檔案</button>
                     <button type="button" onclick="window.fmNewFolder()" class="border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm px-4 py-2.5 rounded-xl">新增資料夾</button>
                     ${fm.path.length === 1 ? `<button type="button" onclick="window.fmAddDefaultFolders()" class="border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm px-4 py-2.5 rounded-xl">建立預設工程資料夾</button>` : ''}
@@ -3378,7 +3399,7 @@
         }
 
         function fmItemAttrs(it) {
-            return `data-id="${it.id}" data-folder="${fmIsFolder(it) ? 1 : 0}" draggable="true" tabindex="0"`;
+            return `data-id="${it.id}" data-folder="${fmIsFolder(it) ? 1 : 0}" draggable="${READ_ONLY ? 'false' : 'true'}" tabindex="0"`;
         }
 
         function fmRenderList(items, inSearch) {
@@ -3470,8 +3491,9 @@
                     e.dataTransfer.setData('application/x-fm-items', JSON.stringify([...fm.selected]));
                     e.dataTransfer.effectAllowed = 'move';
                 });
-                if (el.dataset.folder === '1') fmMakeDropTarget(el, id);
+                if (el.dataset.folder === '1' && !READ_ONLY) fmMakeDropTarget(el, id);
             });
+            if (READ_ONLY) return;
             document.querySelectorAll('.fm-crumb').forEach(el => fmMakeDropTarget(el, el.dataset.folderId));
             fmBindContentDrop(content);
         }
@@ -3585,6 +3607,7 @@
             if (!document.getElementById('fm-dialog').classList.contains('hidden')) return;
             if (!document.getElementById('photo-lightbox').classList.contains('hidden')) return;
             if (e.target.matches('input, textarea, select')) return;
+            if (READ_ONLY && (e.key === 'Delete' || e.key === 'Backspace' || e.key === 'F2')) return;
             if ((e.key === 'Delete' || e.key === 'Backspace') && fm.selected.size) { e.preventDefault(); window.fmAction('delete'); }
             else if (e.key === 'F2' && fm.selected.size === 1) { e.preventDefault(); window.fmAction('rename'); }
             else if (e.key === 'Escape') { window.fmClearSelection(); fmCloseMenu(); }
@@ -3721,16 +3744,16 @@
             let html = '';
             if (!multi) html += fmMenuItem(fmIsFolder(it) ? '開啟' : '預覽', 'open', MI.open);
             html += fmMenuItem(multi ? `下載 ${fm.selected.size} 項` : '下載', 'download', MI.download);
-            if (!multi) html += fmMenuItem('重新命名', 'rename', MI.rename);
-            html += fmMenuItem('移動到…', 'move', MI.move);
+            if (!multi && !READ_ONLY) html += fmMenuItem('重新命名', 'rename', MI.rename);
+            if (!READ_ONLY) html += fmMenuItem('移動到…', 'move', MI.move);
             if (!multi && it?.webViewLink) html += fmMenuItem('在 Google 雲端硬碟開啟', 'drive', MI.drive);
             if (fm.searchResults && !multi) html += fmMenuItem('顯示所在資料夾', 'reveal', MI.folder);
-            html += fmDivider + fmMenuItem(multi ? `刪除 ${fm.selected.size} 項` : '刪除', 'delete', MI.delete, true);
+            if (!READ_ONLY) html += fmDivider + fmMenuItem(multi ? `刪除 ${fm.selected.size} 項` : '刪除', 'delete', MI.delete, true);
             fmShowMenu(e, html);
         }
 
         window.fmBackgroundMenu = function(e) {
-            if (e.target.closest('.fm-item') || fm.searchResults) return;
+            if (READ_ONLY || e.target.closest('.fm-item') || fm.searchResults) return;
             e.preventDefault();
             fm.selected.clear(); fmRefreshSelection();
             fmShowMenu(e, fmMenuItem('新增資料夾', 'newFolder', MI.folder) + fmMenuItem('上傳檔案', 'uploadFiles', MI.upload) + fmMenuItem('上傳資料夾', 'uploadFolder', MI.upload));
@@ -3747,7 +3770,7 @@
             const root = fm.path[0];
             fmShowMenu(e, `<p class="px-4 pt-1.5 pb-2 text-[11px] text-slate-400">目前檔案庫：<b class="text-slate-600">${escapeHtml(root?.name || '')}</b></p>`
                 + fmMenuItem('在 Google 雲端硬碟開啟檔案庫', 'openRootInDrive', MI.drive)
-                + fmMenuItem('更換檔案庫資料夾', 'changeLibrary', MI.gear));
+                + (READ_ONLY ? '' : fmMenuItem('更換檔案庫資料夾', 'changeLibrary', MI.gear)));
         };
 
         window.fmCloseMenuAnd = function(action) {
@@ -4200,7 +4223,7 @@
                             ${e.content ? `<p class="text-sm text-slate-600 mt-1 whitespace-pre-line leading-relaxed">${escapeHtml(e.content)}</p>` : ''}
                             ${atts ? `<div class="flex flex-wrap gap-1.5 mt-2">${atts}</div>` : ''}
                         </div>
-                        <div class="flex gap-0.5 shrink-0 sm:opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                        <div class="edit-only flex gap-0.5 shrink-0 sm:opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                             <button type="button" onclick="window.evtOpenModal('${e.id}')" class="w-8 h-8 rounded-lg hover:bg-slate-200 flex items-center justify-center text-slate-500" title="編輯" aria-label="編輯 ${escapeHtml(e.title)}"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2.5 2.5 0 013.536 3.536L12.536 16.5H9V13z"></path></svg></button>
                             <button type="button" onclick="window.evtDelete('${e.id}')" class="w-8 h-8 rounded-lg hover:bg-rose-100 flex items-center justify-center text-slate-500 hover:text-rose-600" title="刪除" aria-label="刪除 ${escapeHtml(e.title)}"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                         </div>
@@ -4223,7 +4246,7 @@
             const empty = evtState.scope === 'date'
                 ? `<div class="py-10 text-center">
                         <p class="text-slate-500 font-bold">${rocDateLabel(sel)} 沒有重要事紀</p>
-                        <button type="button" onclick="window.evtOpenModal()" class="mt-3 text-sm font-bold text-indigo-600 hover:underline">＋ 新增這天的事紀</button>
+                        <button type="button" onclick="window.evtOpenModal()" class="edit-only mt-3 text-sm font-bold text-indigo-600 hover:underline">＋ 新增這天的事紀</button>
                    </div>`
                 : `<div class="py-10 text-center text-slate-400"><p class="font-bold">${projectEvents.length ? '沒有符合條件的事紀' : '尚無重要事紀'}</p><p class="text-xs mt-1">記錄會議、查驗、會勘、變更設計、工安事件等重要事項，並可附上相關文件</p></div>`;
 
@@ -4236,7 +4259,7 @@
                         </h2>
                         <p class="text-xs text-slate-400 mt-0.5">共 ${projectEvents.length} 則・${selD.getMonth() + 1}/${selD.getDate()} 有 ${selCount} 則</p>
                     </div>
-                    <button type="button" onclick="window.evtOpenModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold pl-3 pr-4 py-2.5 rounded-xl shadow-sm flex items-center gap-1.5">
+                    <button type="button" onclick="window.evtOpenModal()" class="edit-only bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold pl-3 pr-4 py-2.5 rounded-xl shadow-sm flex items-center gap-1.5">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>新增事紀
                     </button>
                 </div>
@@ -4525,6 +4548,30 @@
             }, (error) => console.error('重要事紀同步失敗', error));
         }
 
+        // =====================================================================
+        // 唯讀模式鎖定：覆寫所有寫入／編輯函式，確保只能檢視。
+        // 注意：這是前端限制；若要完全防止寫入，仍需在 Firestore 安全性規則中設定權限。
+        // =====================================================================
+        function applyReadOnlyLock() {
+            const block = () => { window.showToast('目前為唯讀檢視模式，無法編輯或上傳資料'); };
+            const asyncBlock = async () => { block(); };
+            Object.assign(window, {
+                openModal: block, submitForm: asyncBlock,
+                saveProjectConfig: async () => {}, saveDailyReport: async () => {},
+                uploadDataToDrive: asyncBlock, handleFilesUpload: asyncBlock, handleQuickPhotoUpload: asyncBlock,
+                importPlannedProgress: block, importProjectDataJSON: block,
+                photoUploadToDate: asyncBlock, lightboxDelete: asyncBlock,
+                evtOpenModal: block, evtSave: asyncBlock, evtDelete: asyncBlock,
+                fmNewFolder: asyncBlock, fmUploadFiles: asyncBlock, fmAddDefaultFolders: asyncBlock,
+                fmCreateLibrary: asyncBlock, fmLinkLibrary: asyncBlock, fmChangeLibrary: block
+            });
+            const origAction = window.fmAction;
+            window.fmAction = (action) => (['rename', 'move', 'delete'].includes(action) ? block() : origAction(action));
+            // 戰情面板的照片空白區原本點擊即開啟上傳
+            const empty = document.getElementById('panel-photo-empty');
+            if (empty) { empty.removeAttribute('onclick'); empty.classList.remove('cursor-pointer'); }
+        }
+
         // 手機窄螢幕時，S-Curve 的圖例移到標題下方，避免與標題重疊
         function applyResponsiveChartLayout() {
             if (!charts.progress) return;
@@ -4548,8 +4595,12 @@
             setInterval(updateTime, 1000);
             updateTime();
 
-            setupDragAndDrop();
-            setupPhotoModuleDrop();
+            if (!READ_ONLY) {
+                setupDragAndDrop();
+                setupPhotoModuleDrop();
+            } else {
+                applyReadOnlyLock();
+            }
             initViewRouting();
 
             // 視窗縮放時合併重繪（每個畫面影格最多一次），避免拖拉視窗時卡頓
